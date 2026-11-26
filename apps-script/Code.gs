@@ -229,7 +229,7 @@ function yaz_(S) {
   if (rows.length) {
     sh.getRange(2, 1, rows.length, BASLIK.length).setValues(rows);
     var kalan = rows.map(function (r, k) { var n = k + 2; return ['=IF(AND(H' + n + '="";I' + n + '="");"";N(H' + n + ')-N(I' + n + '))']; });
-    sh.getRange(2, 10, rows.length, 1).setFormulas(kalan.map(function (f) { return [f[0].replace(/;/g, ',')]; }));
+    sh.getRange(2, 10, rows.length, 1).setFormulas(kalan.map(function (f) { return [L_(f[0].replace(/;/g, ','))]; }));
   }
   ozetYaz_(S);
   toplantiYaz_(S);
@@ -294,6 +294,27 @@ function ozetYaz_(S) {
   sh.setFrozenRows(4);
 }
 
+/* E-tablo Türkçe gibi virgüllü ondalık kullanan bir dildeyse formüller o dilin sözdizimiyle yazılmalı:
+   argüman ayırıcı ';', dizi sütun ayırıcı '\\', ondalık ','. */
+var _yerel = null;
+function L_(f) {
+  if (_yerel === null) { try { _yerel = /^(tr|de|fr|es|it|pt|nl|ru|pl|cs|da|fi|sv|nb|hu|ro|uk|el|id|vi)/i.test(ss_().getSpreadsheetLocale()); } catch (e) { _yerel = false; } }
+  if (!_yerel || typeof f !== 'string' || f.charAt(0) !== '=') return f;
+  var out = '', q = false, d = 0;
+  for (var i = 0; i < f.length; i++) {
+    var c = f.charAt(i);
+    if (c === '"') { q = !q; out += c; continue; }
+    if (!q) {
+      if (c === '{') d++;
+      else if (c === '}') d--;
+      else if (c === ',') { out += d > 0 ? '\\' : ';'; continue; }
+      else if (c === '.' && /\d/.test(f.charAt(i - 1)) && /\d/.test(f.charAt(i + 1))) { out += ','; continue; }
+    }
+    out += c;
+  }
+  return out;
+}
+
 /* Formülleri setValues ile yazmak e-tablonun diline göre (TR: noktalı virgül) bozulur;
    formüller her zaman setFormulas ile, İngilizce sözdiziminde yazılır. */
 function karisikYaz_(sh, r0, c0, grid) {
@@ -302,8 +323,8 @@ function karisikYaz_(sh, r0, c0, grid) {
   for (var j = 0; j < m; j++) {
     var col = grid.map(function (r) { return r[j]; });
     if (!col.some(function (v) { return typeof v === 'string' && v.charAt(0) === '='; })) continue;
-    if (col.every(function (v) { return typeof v === 'string' && v.charAt(0) === '='; })) sh.getRange(r0, c0 + j, n, 1).setFormulas(col.map(function (v) { return [v]; }));
-    else col.forEach(function (v, i) { if (typeof v === 'string' && v.charAt(0) === '=') sh.getRange(r0 + i, c0 + j).setFormula(v); });
+    if (col.every(function (v) { return typeof v === 'string' && v.charAt(0) === '='; })) sh.getRange(r0, c0 + j, n, 1).setFormulas(col.map(function (v) { return [L_(v)]; }));
+    else col.forEach(function (v, i) { if (typeof v === 'string' && v.charAt(0) === '=') sh.getRange(r0 + i, c0 + j).setFormula(L_(v)); });
   }
 }
 
@@ -352,10 +373,10 @@ function gorunum() {
       SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Devam').setBackground(R_TURUNCU).setFontColor(R_MUREKKEP).setRanges([C]).build(),
       SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Engel var').setBackground(R_TURUNCU_ACIK).setFontColor(R_TURUNCU_KOYU).setRanges([C]).build(),
       SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Bekliyor').setBackground(R_ACIK).setFontColor(R_MUREKKEP).setRanges([C]).build(),
-      SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=AND(ISNUMBER($G2),$G2<TODAY(),$C2<>"Bitti")').setFontColor(R_TURUNCU_KOYU).setBold(true).setRanges([sh.getRange('G2:G')]).build(),
-      SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$C2="Bitti"').setStrikethrough(true).setFontColor(R_GRI).setRanges([sh.getRange('D2:D')]).build(),
+      SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied(L_('=AND(ISNUMBER($G2),$G2<TODAY(),$C2<>"Bitti")')).setFontColor(R_TURUNCU_KOYU).setBold(true).setRanges([sh.getRange('G2:G')]).build(),
+      SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied(L_('=$C2="Bitti"')).setStrikethrough(true).setFontColor(R_GRI).setRanges([sh.getRange('D2:D')]).build(),
       // aşamalar arasında hafif bant: çift numaralı aşamalar açık gri zeminde
-      SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=AND($A2<>"",ISEVEN($A2))').setBackground(R_BANT).setRanges([sh.getRange('A2:B'), sh.getRange('D2:K')]).build()
+      SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied(L_('=AND($A2<>"",ISEVEN($A2))')).setBackground(R_BANT).setRanges([sh.getRange('A2:B'), sh.getRange('D2:K')]).build()
     ]);
   }
 
@@ -375,8 +396,8 @@ function gorunum() {
     ts.getRange(2, 6, m, 3).setWrap(true).setFontColor('#444444');
     ts.getRange(2, 9, m, 1).setFontColor(R_GRI);
     ts.setConditionalFormatRules([
-      SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=AND(ISNUMBER($A2),$A2<TODAY())').setFontColor(R_GRI).setRanges([ts.getRange('A2:I')]).build(),
-      SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=AND(ISNUMBER($A2),$A2>=TODAY(),$A2<=TODAY()+1)').setBackground(R_TURUNCU_ACIK).setRanges([ts.getRange('A2:A')]).build()
+      SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied(L_('=AND(ISNUMBER($A2),$A2<TODAY())')).setFontColor(R_GRI).setRanges([ts.getRange('A2:I')]).build(),
+      SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied(L_('=AND(ISNUMBER($A2),$A2>=TODAY(),$A2<=TODAY()+1)')).setBackground(R_TURUNCU_ACIK).setRanges([ts.getRange('A2:A')]).build()
     ]);
   }
 
@@ -395,7 +416,7 @@ function gorunum() {
     gs.getRange(2, 3, g, 1).setWrap(true);
     gs.getRange(2, 4, g, 1).setFontColor(R_TURUNCU_KOYU).setFontSize(9);
     gs.setConditionalFormatRules([
-      SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$D2<>""').setStrikethrough(true).setFontColor(R_GRI).setRanges([gs.getRange('C2:C')]).build()
+      SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied(L_('=$D2<>""')).setStrikethrough(true).setFontColor(R_GRI).setRanges([gs.getRange('C2:C')]).build()
     ]);
   }
 
