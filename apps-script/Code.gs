@@ -263,7 +263,8 @@ function ozetYaz_(S) {
   });
   if (rows.length) {
     var n0 = 5, n1 = 4 + rows.length, t = n1 + 1;
-    var d = sh.getRange(n0, 1, rows.length, 11).setValues(rows);
+    var d = sh.getRange(n0, 1, rows.length, 11);
+    karisikYaz_(sh, n0, 1, rows);
     govde_(d);
     sh.setRowHeights(n0, rows.length, 34);
     sh.getRange(n0, 1, rows.length, 1).setHorizontalAlignment('center').setFontColor(R_GRI);
@@ -271,7 +272,7 @@ function ozetYaz_(S) {
     sh.getRange(n0, 3, rows.length, 1).setNumberFormat('0%').setFontColor(R_TURUNCU).setFontWeight('bold').setFontSize(14).setHorizontalAlignment('right');
     sh.getRange(n0, 5, rows.length, 4).setHorizontalAlignment('center');
     sh.getRange(n0, 9, rows.length, 3).setNumberFormat('#,##0 "₺";-#,##0 "₺";"—"').setHorizontalAlignment('right');
-    sh.getRange(t, 2, 1, 10).setValues([['Toplam',
+    karisikYaz_(sh, t, 2, [['Toplam',
       '=IF(E' + t + '=0,0,(F' + t + '+0.5*G' + t + '+0.25*H' + t + ')/E' + t + ')',
       '=SPARKLINE(C' + t + ',{"charttype","bar";"max",1;"color1","' + R_MUREKKEP + '";"empty","zero"})',
       '=SUM(E' + n0 + ':E' + n1 + ')', '=SUM(F' + n0 + ':F' + n1 + ')', '=SUM(G' + n0 + ':G' + n1 + ')', '=SUM(H' + n0 + ':H' + n1 + ')',
@@ -291,6 +292,19 @@ function ozetYaz_(S) {
   }
   [40, 300, 70, 160, 70, 70, 70, 70, 120, 120, 120].forEach(function (px, i) { sh.setColumnWidth(i + 1, px); });
   sh.setFrozenRows(4);
+}
+
+/* Formülleri setValues ile yazmak e-tablonun diline göre (TR: noktalı virgül) bozulur;
+   formüller her zaman setFormulas ile, İngilizce sözdiziminde yazılır. */
+function karisikYaz_(sh, r0, c0, grid) {
+  var n = grid.length, m = grid[0].length;
+  sh.getRange(r0, c0, n, m).setValues(grid.map(function (r) { return r.map(function (v) { return (typeof v === 'string' && v.charAt(0) === '=') ? '' : v; }); }));
+  for (var j = 0; j < m; j++) {
+    var col = grid.map(function (r) { return r[j]; });
+    if (!col.some(function (v) { return typeof v === 'string' && v.charAt(0) === '='; })) continue;
+    if (col.every(function (v) { return typeof v === 'string' && v.charAt(0) === '='; })) sh.getRange(r0, c0 + j, n, 1).setFormulas(col.map(function (v) { return [v]; }));
+    else col.forEach(function (v, i) { if (typeof v === 'string' && v.charAt(0) === '=') sh.getRange(r0 + i, c0 + j).setFormula(v); });
+  }
 }
 
 /* ---------------- Görünüm ---------------- */
