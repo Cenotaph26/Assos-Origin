@@ -137,6 +137,48 @@ dialog::backdrop{background:rgba(17,17,17,.35)}
 #dlgF details[open]{display:grid;gap:8px}
 .err{margin:0;color:var(--accink);font-size:14px;min-height:1em}
 .dl-act{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:6px}
+.cardsband{padding-top:clamp(18px,2.5vw,32px);padding-bottom:clamp(18px,2.5vw,28px);border-bottom:1px solid var(--line)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.card{position:relative;text-align:left;font:inherit;color:inherit;background:#fff;border:1px solid var(--line);border-radius:24px;padding:18px 18px 16px;min-height:200px;display:flex;flex-direction:column;cursor:pointer;transition:border-color .15s,transform .15s}
+.card:hover{border-color:#c9c9c9;transform:translateY(-2px)}
+.card.on{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.card .ct{display:flex;align-items:flex-start;gap:10px;margin-bottom:12px}
+.card .cn{width:30px;height:30px;border-radius:50%;background:var(--soft);display:grid;place-items:center;font-size:13px;font-weight:600;flex:none}
+.card.full .cn{background:var(--ink);color:#fff}
+.card .cname{font-size:19px;font-weight:500;line-height:1.2;letter-spacing:-.02em;margin:3px 0 0;flex:1}
+.card .big{margin-top:auto;font-size:56px;font-weight:700;line-height:.95;letter-spacing:-.05em;color:var(--acc);font-variant-numeric:tabular-nums}
+.card.full .big{color:var(--ink)}
+.card .big small{font-size:24px;font-weight:600;margin-left:2px}
+.card .cs{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 8px;font-size:13px;color:var(--mut);margin:8px 0 10px}
+.card .cbar{height:8px;background:var(--soft);border-radius:4px;overflow:hidden}
+.card .cbar i{display:block;height:100%;background:var(--acc)}
+.card.full .cbar i{background:var(--ink)}
+.card .cflag{font-size:12px;font-weight:600;color:var(--accink);background:var(--accsoft);border-radius:10px;padding:2px 8px;white-space:nowrap}
+.card.nextc{border-style:dashed;cursor:default;color:var(--mut);background:#fff}
+.card.nextc:hover{transform:none;border-color:var(--line)}
+.cardact{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.btn.big{height:52px;padding:0 24px;font-size:17px;border-radius:26px}
+.btn.dark{background:var(--ink);color:#fff}.btn.dark:hover{background:#333}
+.ph.closed .phbody{display:none}
+.phh{cursor:pointer;user-select:none;-webkit-user-select:none}
+.phh .pname{flex:1 1 200px;font-weight:500;font-size:22px;line-height:1.15;letter-spacing:-.03em}
+.chev{width:40px;height:40px;border-radius:50%;background:var(--soft);display:grid;place-items:center;flex:none;transition:transform .2s}
+.ph:not(.closed) .chev{transform:rotate(180deg)}
+.phctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+.phctl input.name{flex:1 1 220px;height:44px;border:0;background:var(--soft);border-radius:12px;padding:0 12px;font-weight:500;font-size:17px}
+.add .btn{height:46px;padding:0 20px}
+.grip{position:absolute;left:2px;top:14px;width:22px;height:36px;display:grid;place-items:center;color:#b5b5b5;cursor:grab;touch-action:none;font-size:15px;letter-spacing:-2px}
+tbody tr{position:relative;-webkit-touch-callout:none}
+tbody tr.dragging{opacity:.3}
+.ghost{position:fixed;z-index:50;pointer-events:none;left:0;top:0;background:#fff;border:1px solid var(--ink);border-radius:16px;padding:10px 14px;box-shadow:0 12px 30px rgba(0,0,0,.18);font-weight:500;max-width:min(420px,80vw);display:flex;gap:10px;align-items:center}
+.ghost .pill{min-width:0;height:28px;font-size:13px;margin:0}
+.dropline{position:fixed;z-index:49;height:3px;background:var(--acc);border-radius:2px;pointer-events:none;display:none}
+.ph.droptarget{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+body.dragmode,body.dragmode *{user-select:none;-webkit-user-select:none;cursor:grabbing}
+@media(max-width:600px){
+.cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.card{min-height:170px;padding:14px;border-radius:20px}.card .cname{font-size:16px}.card .big{font-size:42px}.card .cn{width:26px;height:26px}.phh .pname{font-size:18px}
+.card .cs span+span{display:none}.cardact .btn.big{flex:1 1 100%}
+}
 @media(prefers-reduced-motion:reduce){.tray i,.st,.btn{transition:none}}
 </style>
 </head>
@@ -149,8 +191,16 @@ dialog::backdrop{background:rgba(17,17,17,.35)}
     </div>
     <div class="kpis" id="kpis"></div>
   </div>
-  <nav class="route" id="route" aria-label="Aşamalar"></nav>
 </div></header>
+
+<section class="band cardsband" aria-label="Aşamalar"><div class="wrap">
+  <div class="cards" id="cards"></div>
+  <div class="cardact">
+    <button class="btn pri big" id="addPh">+ Aşama ekle</button>
+    <button class="btn" id="undo" disabled>Geri al</button>
+    <button class="btn" id="expand">Tümünü aç</button>
+  </div>
+</div></section>
 
 <div class="bar band" style="padding-block:12px"><div class="wrap tools">
   <input type="search" id="q" placeholder="Adım, sorumlu veya notta ara" aria-label="Ara">
@@ -158,15 +208,14 @@ dialog::backdrop{background:rgba(17,17,17,.35)}
     <option value="">Tüm durumlar</option><option value="bekliyor">Bekliyor</option><option value="devam">Devam ediyor</option><option value="bitti">Bitti</option><option value="engel">Engel var</option><option value="late">Gecikenler</option>
   </select>
   <select id="fw" aria-label="Sorumlu filtresi"><option value="">Tüm sorumlular</option></select>
-  <button class="btn pri" id="addPh">+ Aşama ekle</button>
-  <button class="btn" id="undo" disabled>Geri al</button>
-  <button class="btn" id="xl">Excel'e aktar</button>
+  <button class="btn dark" id="gs">E-Tabloya aktar</button>
+  <button class="btn" id="xl">Excel indir</button>
   <button class="btn" id="set" aria-label="Bağlantı ayarları">Ayarlar</button>
   <span class="save" id="save"><i class="dot" id="dot"></i><span id="savet">Yükleniyor…</span></span>
 </div></div>
 
 <main class="band" style="padding-top:4px"><div class="wrap">
-  <p class="note" id="note">Durum düğmesine tıklayarak sırayla değiştirin: Bekliyor → Devam → Bitti → Engel. Tüm alanlar düzenlenebilir; değişiklikler otomatik kaydedilir ve Google E-Tablo ile eşitlenir.</p>
+  <p class="note" id="note">Aşamaya dokunarak açın. Durum düğmesine dokunun: Bekliyor → Devam → Bitti → Engel. Adımı taşımak için üzerine basılı tutup sürükleyin. Değişiklikler otomatik olarak Google E-Tablo'ya kaydedilir.</p>
   <div id="phases"></div>
   <div class="nextbox" id="nextbox"><b>Sonraki aşama: Hammadde, tedarik ve ürün.</b> Un, tereyağı ve ambalaj tedarikçileri, reçete standardizasyonu, HACCP, kadro ve deneme üretimi. Bu listeyi birlikte ayrıca çıkaracağız.</div>
 </div></main>
@@ -177,6 +226,8 @@ dialog::backdrop{background:rgba(17,17,17,.35)}
     <p class="dl-sub">Veriler ekibin Google E-Tablosunda saklanır. Şifreyi ekip yöneticisinden alın.</p>
     <label for="pin">Ekip şifresi</label>
     <input id="pin" type="password" autocomplete="current-password" required>
+    <label for="sheet">Google E-Tablo bağlantısı</label>
+    <input id="sheet" type="url" placeholder="https://docs.google.com/spreadsheets/d/…" inputmode="url">
     <details id="adv"><summary>Gelişmiş: bağlantı adresi</summary>
       <label for="api">Apps Script web uygulaması adresi</label>
       <input id="api" type="url" placeholder="https://script.google.com/macros/s/…/exec" inputmode="url">

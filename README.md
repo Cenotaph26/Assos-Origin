@@ -57,9 +57,12 @@ Assos Extra · Origin üretim merkezinin inşaattan açılışa kadar tüm adım
 | İş | Nerede |
 |---|---|
 | Durum değiştirmek | Durum düğmesine dokunun: Bekliyor → Devam → Bitti → Engel var |
-| Adım / aşama eklemek, silmek, sıralamak | Panelde ilgili düğmeler (silmek için iki kez dokunun) |
+| Bir aşamaya gitmek | Üstteki büyük karta dokunun; aşama açılır ve oraya kaydırılır |
+| Adımı taşımak | Durum düğmesine ya da soldaki ⋮⋮ tutamağına basılı tutup sürükleyin (başka aşamaya da bırakılabilir) |
+| Adım / aşama eklemek, silmek | "+ Aşama ekle" kartların altında, "+ Adım ekle" açılan aşamanın içinde (silmek için iki kez dokunun) |
 | Geri almak | "Geri al" |
-| Biçimli Excel almak | "Excel'e aktar" |
+| Google E-Tabloyu açmak | "E-Tabloya aktar": bekleyen değişiklikleri gönderir ve e-tabloyu açar |
+| Biçimli Excel almak | "Excel indir" |
 | Günlük Excel yedekleri | Google Drive → Origin Excel Yedekleri |
 | Anında yedek | E-tablo menüsü → Origin → Şimdi Excel yedeği al |
 | Toplu düzenleme | E-tablodaki Takip sayfası. Gizli `asama_id` / `adim_id` sütunlarına dokunmayın. Yeni satır eklerken Aşama adını mevcut bir aşamayla aynı yazın |

@@ -32,7 +32,7 @@ function doGet(e) {
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
-    return json_({ ok: true, rev: Number(props_().getProperty('rev') || 0), state: oku_() });
+    return json_({ ok: true, rev: Number(props_().getProperty('rev') || 0), state: oku_(), sheetUrl: ss_().getUrl() });
   } finally { lock.releaseLock(); }
 }
 
@@ -47,7 +47,7 @@ function doPost(e) {
     (body.ops || []).forEach(function (op) { applyOp(S, op); });
     yaz_(S);
     var rev = revArtir_();
-    return json_({ ok: true, rev: rev, state: oku_() });
+    return json_({ ok: true, rev: rev, state: oku_(), sheetUrl: ss_().getUrl() });
   } catch (err) {
     return json_({ ok: false, error: String(err) });
   } finally { lock.releaseLock(); }
