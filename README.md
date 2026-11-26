@@ -45,7 +45,7 @@ Assos Extra · Origin üretim merkezinin inşaattan açılışa kadar tüm adım
 ### 5. GitHub Pages'i açın
 1. Depoda **Settings → Pages** bölümüne gidin.
 2. **Source:** Deploy from a branch. **Branch:** `main`, klasör `/ (root)` seçip **Save**'e basın.
-3. Birkaç dakika sonra panel `https://cenotaph26.github.io/assos-origin/` adresinde açılır.
+3. Birkaç dakika sonra panel `https://cenotaph26.github.io/Assos-Origin/` adresinde açılır.
 
 Ücretsiz GitHub hesabında Pages yalnızca public depolarda çalışır. Depoyu public yapmak verileri açığa çıkarmaz, çünkü veriler e-tabloda durur ve şifreyle korunur. Depoda yalnızca kod ve başlangıç listesi bulunur.
 
