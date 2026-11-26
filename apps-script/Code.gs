@@ -312,7 +312,7 @@ function gorunum() {
   // Takip
   var sh = ss.getSheetByName(SAYFA);
   if (sh) {
-    sh.setHiddenGridlines(true).setTabColor(renk[SAYFA]).setFrozenRows(1).setFrozenColumns(0);
+    sh.setHiddenGridlines(true).setTabColor(renk[SAYFA]); sh.setFrozenRows(1);
     baslik_(sh.getRange(1, 1, 1, BASLIK.length).setValues([BASLIK]));
     sh.setRowHeight(1, 38);
     var n = Math.max(sh.getMaxRows() - 1, 1);
@@ -348,7 +348,7 @@ function gorunum() {
   // Toplantılar
   var ts = ss.getSheetByName(TOPLANTI);
   if (ts) {
-    ts.setHiddenGridlines(true).setTabColor(renk[TOPLANTI]).setFrozenRows(1);
+    ts.setHiddenGridlines(true).setTabColor(renk[TOPLANTI]); ts.setFrozenRows(1);
     baslik_(ts.getRange(1, 1, 1, TBASLIK.length).setValues([TBASLIK]));
     ts.setRowHeight(1, 38);
     var m = Math.max(ts.getMaxRows() - 1, 1);
@@ -369,7 +369,7 @@ function gorunum() {
   // Geçmiş
   var gs = ss.getSheetByName(GECMIS);
   if (gs) {
-    gs.setHiddenGridlines(true).setTabColor(renk[GECMIS]).setFrozenRows(1);
+    gs.setHiddenGridlines(true).setTabColor(renk[GECMIS]); gs.setFrozenRows(1);
     baslik_(gs.getRange(1, 1, 1, GBASLIK.length).setValues([GBASLIK]));
     gs.setRowHeight(1, 38);
     var g = Math.max(gs.getMaxRows() - 1, 1);
