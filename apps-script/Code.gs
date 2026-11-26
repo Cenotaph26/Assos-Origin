@@ -270,7 +270,7 @@ function ozetYaz_(S) {
     sh.getRange(n0, 1, rows.length, 1).setHorizontalAlignment('center').setFontColor(R_GRI);
     sh.getRange(n0, 2, rows.length, 1).setFontWeight('bold');
     sh.getRange(n0, 3, rows.length, 1).setNumberFormat('0%').setFontColor(R_TURUNCU).setFontWeight('bold').setFontSize(14).setHorizontalAlignment('right');
-    sh.getRange(n0, 5, rows.length, 4).setHorizontalAlignment('center');
+    sh.getRange(n0, 5, rows.length + 1, 4).setNumberFormat('0').setHorizontalAlignment('center');
     sh.getRange(n0, 9, rows.length, 3).setNumberFormat('#,##0 "₺";-#,##0 "₺";"—"').setHorizontalAlignment('right');
     karisikYaz_(sh, t, 2, [['Toplam',
       '=IF(E' + t + '=0,0,(F' + t + '+0.5*G' + t + '+0.25*H' + t + ')/E' + t + ')',
