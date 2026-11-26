@@ -9,6 +9,8 @@ Assos Extra · Origin üretim merkezinin inşaattan açılışa kadar tüm adım
 - **Excel:**
   - Paneldeki "Excel'e aktar" düğmesi biçimli bir `.xlsx` indirir.
   - E-tablo her gece 23:00'te Drive'daki "Origin Excel Yedekleri" klasörüne `.xlsx` olarak yedeklenir. Son 30 yedek saklanır.
+- **Değişiklik geçmişi:** Kim, ne zaman, neyi değiştirdi "Geçmiş" sayfasına yazılır. Paneldeki "Geçmiş" düğmesinden her değişiklik tek tek geri alınabilir.
+- **Toplantılar:** Panelden eklenen toplantılar Google Takvim'e 1 gün ve 1 saat önce hatırlatıcıyla eklenir. Katılımcılara davet gider. "Takvimimle eşitle" düğmesi ve saatlik otomatik eşitleme, takvimde yapılan saat değişikliklerini panele de getirir.
 - **E-Tablo'da elle düzenleme:** E-Tablo'daki "Takip" sayfasında elle yapılan düzenlemeler de panele yansır.
 
 ## Kurulum (bir kez, yaklaşık 10 dakika)
@@ -52,6 +54,17 @@ Assos Extra · Origin üretim merkezinin inşaattan açılışa kadar tüm adım
 2. E-tablo boşsa panel başlangıç listesini e-tabloya yazar.
 3. Telefonda: **Paylaş → Ana Ekrana Ekle** (iPhone) ya da **⋮ → Ana ekrana ekle** (Android).
 
+## Güncelleme (değişiklik geçmişi ve toplantılar sürümü)
+
+Panel kendiliğinden güncellenir. E-tablodaki kodu ise bir kez güncellemeniz gerekir:
+1. E-tabloda **Uzantılar → Apps Script**'i açın.
+2. `Code.gs` içeriğini silin ve bu depodaki [`apps-script/Code.gs`](apps-script/Code.gs) dosyasının tamamını yapıştırın.
+3. `EKIP_SIFRESI` satırına mevcut şifrenizi yeniden yazın ve **Kaydet**'e basın.
+4. Fonksiyon listesinden `kurulum`'u seçip **Çalıştır**'a basın. Google bu sefer **Takvim** izni de isteyecek; izin verin. Böylece "Toplantılar" ve "Geçmiş" sayfaları ile saatlik takvim eşitlemesi kurulur.
+5. **Dağıt → Dağıtımları yönet** yolunu izleyin. Kalem simgesine basın, **Sürüm: Yeni sürüm** seçip **Dağıt**'a basın. Adres aynı kalır.
+
+Toplantılar, web uygulamasını yayınlayan hesabın ana takvimine eklenir. Başka bir takvim kullanmak isterseniz `Code.gs` içindeki `TAKVIM_ID` satırına o takvimin kimliğini yazın. Kimliği Google Takvim'de takvim ayarları → "Takvimi entegre et" bölümünde bulabilirsiniz.
+
 ## Günlük kullanım
 
 | İş | Nerede |
@@ -60,7 +73,10 @@ Assos Extra · Origin üretim merkezinin inşaattan açılışa kadar tüm adım
 | Bir aşamaya gitmek | Üstteki büyük karta dokunun; aşama açılır ve oraya kaydırılır |
 | Adımı taşımak | Durum düğmesine ya da soldaki ⋮⋮ tutamağına basılı tutup sürükleyin (başka aşamaya da bırakılabilir) |
 | Adım / aşama eklemek, silmek | "+ Aşama ekle" kartların altında, "+ Adım ekle" açılan aşamanın içinde (silmek için iki kez dokunun) |
-| Geri almak | "Geri al" |
+| Son değişikliğinizi geri almak | Araç çubuğunda "Geri al" |
+| Herhangi bir eski değişikliği geri almak | "Geçmiş" → ilgili satırda "Geri al" (iki kez dokunun) |
+| Toplantı eklemek / düzenlemek | Toplantılar bölümü → "+ Toplantı ekle" ya da ✎ |
+| Takvimle eşitlemek | "Takvimimle eşitle" (ayrıca her saat kendiliğinden) |
 | Google E-Tabloyu açmak | "E-Tabloya aktar": bekleyen değişiklikleri gönderir ve e-tabloyu açar |
 | Biçimli Excel almak | "Excel indir" |
 | Günlük Excel yedekleri | Google Drive → Origin Excel Yedekleri |

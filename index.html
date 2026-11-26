@@ -179,6 +179,44 @@ body.dragmode,body.dragmode *{user-select:none;-webkit-user-select:none;cursor:g
 .cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.card{min-height:170px;padding:14px;border-radius:20px}.card .cname{font-size:16px}.card .big{font-size:42px}.card .cn{width:26px;height:26px}.phh .pname{font-size:18px}
 .card .cs span+span{display:none}.cardact .btn.big{flex:1 1 100%}
 }
+
+.meetband{border-bottom:1px solid var(--line)}
+.mhead{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+.mhead h2{margin:0;font-weight:500;font-size:clamp(26px,3vw,34px);letter-spacing:-.03em}
+.mact{display:flex;flex-wrap:wrap;gap:8px}
+.mlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;margin-top:14px}
+.mi{display:grid;grid-template-columns:72px minmax(0,1fr);gap:14px;border:1px solid var(--line);border-radius:20px;padding:14px;background:#fff}
+.mday{border-radius:14px;background:var(--soft);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;text-align:center}
+.mday b{font-size:30px;font-weight:700;line-height:1;letter-spacing:-.03em}
+.mday span{font-size:12px;color:var(--mut)}
+.mi.soon .mday{background:var(--acc);color:#111}.mi.soon .mday span{color:#111}
+.mt{font-weight:500;font-size:17px;line-height:1.25;margin:0 0 4px;letter-spacing:-.01em}
+.mm{font-size:14px;color:var(--mut);display:flex;flex-wrap:wrap;gap:2px 12px}
+.mfoot{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
+.chip{font-size:12px;font-weight:500;border-radius:10px;padding:3px 9px;background:var(--soft);white-space:nowrap}
+.chip.ok{background:#e4f4ea;color:#1d6b3d}.chip.err{background:var(--accsoft);color:var(--accink)}
+.mfoot .ic{width:36px;height:36px}.mfoot .sp{flex:1}
+.mempty{color:var(--mut);padding:18px;border:1.5px dashed var(--line);border-radius:20px;margin-top:14px}
+.mpast{margin-top:14px}.mpast summary{cursor:pointer;color:var(--mut);padding:6px 0;font-size:15px}
+.mpast .mi{opacity:.75}
+#mF{padding:24px;display:grid;gap:8px}
+#mF h2{margin:0 0 6px;font-weight:500;font-size:28px;letter-spacing:-.03em}
+#mF label{font-size:13px;color:var(--mut);margin-top:4px;display:block}
+#mF input,#mF select,#mF textarea{width:100%;min-height:46px;border:0;background:var(--soft);border-radius:12px;padding:10px 12px}
+.g3{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:8px}
+dialog.side{margin:0 0 0 auto;height:100%;max-height:100%;width:min(520px,100vw);border-radius:24px 0 0 24px}
+.sidein{padding:22px;display:flex;flex-direction:column;height:100%}
+.sidehead{display:flex;justify-content:space-between;align-items:center}
+.sidehead h2{margin:0;font-weight:500;font-size:28px;letter-spacing:-.03em}
+.hlist{overflow-y:auto;flex:1;margin-top:6px}
+.hi{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.hi .hd2{font-size:13px;color:var(--mut)}.hi .hd2 b{color:var(--ink);font-weight:600}
+.hi .ht{font-size:15px;line-height:1.35;grid-column:1}
+.hi .hb{grid-row:1/3;grid-column:2;align-self:center}
+.hi .hb .btn{height:38px;padding:0 14px;font-size:14px}
+.hi.rev .ht{color:var(--mut);text-decoration:line-through}
+.hi .hs{font-size:12px;color:var(--accink);grid-column:1}
+@media(max-width:600px){.mlist{grid-template-columns:minmax(0,1fr)}.g3{grid-template-columns:1fr 1fr}.g3>div:first-child{grid-column:1/-1}dialog.side{border-radius:24px 24px 0 0;margin:auto 0 0;height:85%;width:100vw;max-width:100vw}}
 @media(prefers-reduced-motion:reduce){.tray i,.st,.btn{transition:none}}
 </style>
 </head>
@@ -197,9 +235,21 @@ body.dragmode,body.dragmode *{user-select:none;-webkit-user-select:none;cursor:g
   <div class="cards" id="cards"></div>
   <div class="cardact">
     <button class="btn pri big" id="addPh">+ Aşama ekle</button>
-    <button class="btn" id="undo" disabled>Geri al</button>
     <button class="btn" id="expand">Tümünü aç</button>
   </div>
+</div></section>
+
+<section class="band meetband" id="toplantilar" aria-labelledby="mT"><div class="wrap">
+  <div class="mhead">
+    <h2 id="mT">Toplantılar</h2>
+    <div class="mact">
+      <button class="btn pri" id="addM">+ Toplantı ekle</button>
+      <button class="btn dark" id="calSync">Takvimimle eşitle</button>
+    </div>
+  </div>
+  <p class="note">Toplantılar Google Takvim'e 1 gün ve 1 saat önce hatırlatıcıyla eklenir. Katılımcı e-postaları yazılırsa onlara davet gider. Takvimde saati değişen toplantı burada da güncellenir.</p>
+  <div class="mlist" id="mlist"></div>
+  <details class="mpast" id="mpast"><summary id="mpastS">Geçmiş toplantılar</summary><div class="mlist" id="mlistPast"></div></details>
 </div></section>
 
 <div class="bar band" style="padding-block:12px"><div class="wrap tools">
@@ -208,6 +258,8 @@ body.dragmode,body.dragmode *{user-select:none;-webkit-user-select:none;cursor:g
     <option value="">Tüm durumlar</option><option value="bekliyor">Bekliyor</option><option value="devam">Devam ediyor</option><option value="bitti">Bitti</option><option value="engel">Engel var</option><option value="late">Gecikenler</option>
   </select>
   <select id="fw" aria-label="Sorumlu filtresi"><option value="">Tüm sorumlular</option></select>
+  <button class="btn" id="undo" disabled title="Son değişikliğinizi geri alır">Geri al</button>
+  <button class="btn" id="hist">Geçmiş</button>
   <button class="btn dark" id="gs">E-Tabloya aktar</button>
   <button class="btn" id="xl">Excel indir</button>
   <button class="btn" id="set" aria-label="Bağlantı ayarları">Ayarlar</button>
@@ -224,6 +276,8 @@ body.dragmode,body.dragmode *{user-select:none;-webkit-user-select:none;cursor:g
   <form id="dlgF" method="dialog">
     <h2 id="dlgT">Bağlantı</h2>
     <p class="dl-sub">Veriler ekibin Google E-Tablosunda saklanır. Şifreyi ekip yöneticisinden alın.</p>
+    <label for="uname">Adınız (değişiklik geçmişinde görünür)</label>
+    <input id="uname" autocomplete="name" required maxlength="40" placeholder="Örn. Ayşe K.">
     <label for="pin">Ekip şifresi</label>
     <input id="pin" type="password" autocomplete="current-password" required>
     <label for="sheet">Google E-Tablo bağlantısı</label>
@@ -237,6 +291,32 @@ body.dragmode,body.dragmode *{user-select:none;-webkit-user-select:none;cursor:g
       <button type="button" class="btn" id="dlgLocal">Sadece bu cihazda kullan</button>
       <button type="submit" class="btn pri" id="dlgOk">Bağlan</button>
     </div>
+  </form>
+</dialog>
+
+<dialog id="hdlg" class="side" aria-labelledby="hT">
+  <div class="sidein">
+    <div class="sidehead"><h2 id="hT">Değişiklik geçmişi</h2><button class="ic" id="hClose" aria-label="Kapat">×</button></div>
+    <p class="dl-sub">Kim, ne zaman, neyi değiştirdi. "Geri al" o değişikliği tek başına geri çevirir.</p>
+    <div id="hlist" class="hlist"></div>
+  </div>
+</dialog>
+
+<dialog id="mdlg" aria-labelledby="mdT">
+  <form id="mF" method="dialog">
+    <h2 id="mdT">Toplantı</h2>
+    <label for="mTitle">Başlık</label><input id="mTitle" required maxlength="120" placeholder="Örn. Mimar ile yerleşim planı">
+    <div class="g3">
+      <div><label for="mDate">Tarih</label><input id="mDate" type="date" required></div>
+      <div><label for="mStart">Başlangıç</label><input id="mStart" type="time" required value="10:00"></div>
+      <div><label for="mEnd">Bitiş</label><input id="mEnd" type="time" value="11:00"></div>
+    </div>
+    <label for="mPlace">Yer</label><input id="mPlace" maxlength="120" placeholder="Şantiye ofisi / Google Meet">
+    <label for="mWho">Katılımcılar (e-posta, virgülle)</label><input id="mWho" inputmode="email" placeholder="ali@ornek.com, ayse@ornek.com">
+    <label for="mPhase">İlgili aşama</label><select id="mPhase"></select>
+    <label for="mNote">Gündem / not</label><textarea id="mNote" rows="3"></textarea>
+    <p class="err" id="mErr" role="alert"></p>
+    <div class="dl-act"><button type="button" class="btn" id="mCancel">Vazgeç</button><button type="submit" class="btn pri">Kaydet</button></div>
   </form>
 </dialog>
 

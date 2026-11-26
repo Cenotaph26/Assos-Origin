@@ -4,6 +4,8 @@
  * Bu dosya, takip panelinin (GitHub Pages) verilerini Google E-Tablo'da saklar.
  * - "Takip" sayfası: tüm aşama ve adımlar (asıl veri). Elle de düzenlenebilir; panel değişikliği görür.
  * - "Özet" sayfası: aşama başına ilerleme ve bütçe (otomatik).
+ * - "Toplantılar" sayfası: toplantılar; Google Takvim ile eşitlenir (1 gün ve 1 saat önce hatırlatıcı).
+ * - "Geçmiş" sayfası: kim, ne zaman, neyi değiştirdi; panelden tek tek geri alınabilir.
  * - Her gün Drive'daki "Origin Excel Yedekleri" klasörüne .xlsx yedek alınır.
  *
  * Kurulum: README.md dosyasındaki adımları izleyin. İlk kez EKIP_SIFRESI'ni değiştirip kurulum() çalıştırın.
@@ -17,6 +19,13 @@ var OZET = 'Özet';
 var YEDEK_KLASORU = 'Origin Excel Yedekleri';
 var YEDEK_SAYISI = 30;
 var SAAT_DILIMI = 'Europe/Istanbul';
+var TOPLANTI = 'Toplantılar';
+var GECMIS = 'Geçmiş';
+// Boş bırakılırsa web uygulamasını yayınlayan hesabın ana takvimi kullanılır.
+var TAKVIM_ID = '';
+var ETKINLIK_ONEKI = 'Origin · ';
+var TBASLIK = ['Tarih', 'Başlangıç', 'Bitiş', 'Başlık', 'Yer', 'Katılımcılar (e-posta)', 'Aşama', 'Not', 'Takvim', 'toplanti_id', 'etkinlik_id', 'asama_id', 'degisti', 'esitlendi'];
+var GBASLIK = ['Zaman', 'Kişi', 'Değişiklik', 'Durum', 'kayit_id', 'ters_islem'];
 
 var BASLIK = ['Aşama no', 'Aşama', 'Durum', 'Adım', 'Sorumlu', 'Başlangıç', 'Bitiş', 'Plan bütçe', 'Harcanan', 'Kalan', 'Not', 'asama_id', 'adim_id'];
 var LBL = { bekliyor: 'Bekliyor', devam: 'Devam', bitti: 'Bitti', engel: 'Engel var' };
@@ -27,6 +36,7 @@ var KOD = { 'bekliyor': 'bekliyor', 'devam': 'devam', 'bitti': 'bitti', 'engel v
 function doGet(e) {
   var q = (e && e.parameter) || {};
   if (!sifreDogru_(q.pin)) return json_({ ok: false, error: 'auth' });
+  if (q.action === 'history') return json_({ ok: true, history: gecmis_(Number(q.n) || 150) });
   var rev = Number(props_().getProperty('rev') || 0);
   if (q.rev && Number(q.rev) === rev) return json_({ ok: true, same: true, rev: rev });
   var lock = LockService.getScriptLock();
@@ -41,13 +51,31 @@ function doPost(e) {
   try { body = JSON.parse(e.postData.contents); } catch (err) { return json_({ ok: false, error: 'bad_json' }); }
   if (!sifreDogru_(body.pin)) return json_({ ok: false, error: 'auth' });
   var lock = LockService.getScriptLock();
-  lock.waitLock(25000);
+  lock.waitLock(28000);
   try {
+    var user = String(body.user || 'Bilinmeyen').slice(0, 60), report = null;
     var S = oku_();
-    (body.ops || []).forEach(function (op) { applyOp(S, op); });
+    if (body.action === 'revert') {
+      var msg = geriAl_(S, body.id, user);
+      if (msg !== true) return json_({ ok: false, error: msg });
+    } else if (body.action === 'calsync') {
+      report = takvimEsitle_(S, user);
+    } else {
+      var changes = body.changes || [{ ops: body.ops || [] }];
+      changes.forEach(function (c) {
+        (c.ops || []).forEach(function (op) {
+          if (op.t === 'mdel') etkinlikSil_(S, op.m);
+          applyOp(S, op);
+        });
+        if (c.d) log_(user, c.d, c.inv || null);
+      });
+      if (S.meetings.some(function (m) { return m.dirty; })) {
+        try { calPush_(S); } catch (err) { report = { error: String(err) }; }
+      }
+    }
     yaz_(S);
     var rev = revArtir_();
-    return json_({ ok: true, rev: rev, state: oku_(), sheetUrl: ss_().getUrl() });
+    return json_({ ok: true, rev: rev, state: oku_(), sheetUrl: ss_().getUrl(), report: report });
   } catch (err) {
     return json_({ ok: false, error: String(err) });
   } finally { lock.releaseLock(); }
@@ -55,14 +83,17 @@ function doPost(e) {
 
 /* ---------------- Veri işlemleri (js/ops.js ile aynı) ---------------- */
 
+var STEP_F = ['t', 'who', 's', 'e', 'plan', 'act', 'st', 'note'];
+var MEET_F = ['title', 'date', 'start', 'end', 'place', 'who', 'phase', 'note'];
 function findPhase(S, id) { return S.phases.find(function (p) { return p.id === id; }); }
 function applyOp(S, op) {
   var p = op.p ? findPhase(S, op.p) : null, i;
+  if (!S.meetings) S.meetings = [];
   switch (op.t) {
     case 'set':
       if (!p) return S;
       var x = p.steps.find(function (s) { return s.id === op.s; });
-      if (x && ['t', 'who', 's', 'e', 'plan', 'act', 'st', 'note'].indexOf(op.f) >= 0) x[op.f] = String(op.v == null ? '' : op.v);
+      if (x && STEP_F.indexOf(op.f) >= 0) x[op.f] = String(op.v == null ? '' : op.v);
       return S;
     case 'pname':
       if (p) p.name = String(op.v || 'Adsız aşama');
@@ -92,6 +123,18 @@ function applyOp(S, op) {
       return S;
     case 'seed':
       if (!S.phases.length && op.phases && op.phases.length) S.phases = op.phases;
+      return S;
+    case 'madd':
+      if (S.meetings.some(function (m) { return m.id === op.mt.id; })) return S;
+      var nm = JSON.parse(JSON.stringify(op.mt)); nm.dirty = true;
+      S.meetings.push(nm);
+      return S;
+    case 'mset':
+      var m = S.meetings.find(function (z) { return z.id === op.m; });
+      if (m && MEET_F.indexOf(op.f) >= 0) { m[op.f] = String(op.v == null ? '' : op.v); m.dirty = true; }
+      return S;
+    case 'mdel':
+      S.meetings = S.meetings.filter(function (z) { return z.id !== op.m; });
       return S;
   }
   return S;
@@ -137,7 +180,7 @@ function sayiDeger_(s) {
 
 function oku_() {
   var sh = ss_().getSheetByName(SAYFA);
-  var S = { phases: [] };
+  var S = { phases: [], meetings: toplantiOku_() };
   if (!sh || sh.getLastRow() < 2) return S;
   var rng = sh.getRange(2, 1, sh.getLastRow() - 1, BASLIK.length);
   var vals = rng.getValues();
@@ -183,6 +226,7 @@ function yaz_(S) {
     sh.getRange(2, 10, rows.length, 1).setFormulas(kalan.map(function (f) { return [f[0].replace(/;/g, ',')]; }));
   }
   ozetYaz_(S);
+  toplantiYaz_(S);
 }
 
 function ozetYaz_(S) {
@@ -216,7 +260,14 @@ function ozetYaz_(S) {
 
 /* Takip sayfası elle düzenlenince panellerin yeni veriyi çekmesi için sürüm artırılır. */
 function onEdit(e) {
-  try { if (e && e.range && e.range.getSheet().getName() === SAYFA) revArtir_(); } catch (err) {}
+  try {
+    var n = e && e.range && e.range.getSheet().getName();
+    if (n === SAYFA) revArtir_();
+    if (n === TOPLANTI && e.range.getRow() > 1 && e.range.getColumn() <= 8) {
+      e.range.getSheet().getRange(e.range.getRow(), 13, e.range.getNumRows(), 1).setValue(true);
+      revArtir_();
+    }
+  } catch (err) {}
 }
 
 /* ---------------- Kurulum ---------------- */
@@ -252,8 +303,20 @@ function kurulum() {
   if (!ss.getSheetByName(OZET)) ss.insertSheet(OZET, 1);
   ['Sayfa1', 'Sheet1'].forEach(function (n) { var s = ss.getSheetByName(n); if (s && ss.getSheets().length > 2 && s.getLastRow() === 0) ss.deleteSheet(s); });
 
-  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'gunlukYedek') ScriptApp.deleteTrigger(t); });
+  var ts = ss.getSheetByName(TOPLANTI) || ss.insertSheet(TOPLANTI);
+  ts.getRange(1, 1, 1, TBASLIK.length).setValues([TBASLIK]).setFontWeight('bold').setFontColor('#767676').setBackground('#f2f2f2');
+  ts.setFrozenRows(1); ts.hideColumns(10, 5);
+  [100, 80, 80, 280, 160, 240, 200, 280, 120].forEach(function (px, i) { ts.setColumnWidth(i + 1, px); });
+  ts.getRange('A2:A').setNumberFormat('dd.mm.yyyy'); ts.getRange('B2:C').setNumberFormat('@');
+  var gs = ss.getSheetByName(GECMIS) || ss.insertSheet(GECMIS);
+  gs.getRange(1, 1, 1, GBASLIK.length).setValues([GBASLIK]).setFontWeight('bold').setFontColor('#767676').setBackground('#f2f2f2');
+  gs.setFrozenRows(1); gs.hideColumns(5, 2);
+  [150, 140, 560, 160].forEach(function (px, i) { gs.setColumnWidth(i + 1, px); });
+
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (['gunlukYedek', 'takvimEsitle'].indexOf(t.getHandlerFunction()) >= 0) ScriptApp.deleteTrigger(t); });
   ScriptApp.newTrigger('gunlukYedek').timeBased().everyDays(1).atHour(23).inTimezone(SAAT_DILIMI).create();
+  ScriptApp.newTrigger('takvimEsitle').timeBased().everyHours(1).create();
+  takvim_(); // Takvim iznini kurulumda iste
   Logger.log('Kurulum tamam. Şimdi Dağıt > Yeni dağıtım > Web uygulaması ile yayınlayın.');
 }
 
@@ -278,10 +341,188 @@ function gunlukYedek() {
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('Origin')
     .addItem('Şimdi Excel yedeği al', 'yedekMenu_')
+    .addItem('Toplantıları Takvimle eşitle', 'takvimEsitle')
     .addItem('Kurulumu yenile', 'kurulum')
     .addToUi();
 }
 function yedekMenu_() {
   var ad = gunlukYedek();
   SpreadsheetApp.getUi().alert('Yedek alındı: ' + ad + '\nDrive > ' + YEDEK_KLASORU);
+}
+
+/* ---------------- Değişiklik geçmişi ---------------- */
+
+function log_(user, d, inv) {
+  var sh = ss_().getSheetByName(GECMIS) || ss_().insertSheet(GECMIS);
+  if (sh.getLastRow() === 0) sh.getRange(1, 1, 1, GBASLIK.length).setValues([GBASLIK]);
+  var j = inv ? JSON.stringify(inv) : '';
+  if (j.length > 45000) j = '';
+  sh.appendRow([new Date(), user, String(d).slice(0, 500), '', yeniId_(), j]);
+}
+
+function gecmis_(n) {
+  var sh = ss_().getSheetByName(GECMIS);
+  if (!sh || sh.getLastRow() < 2) return [];
+  var last = sh.getLastRow(), from = Math.max(2, last - n + 1);
+  return sh.getRange(from, 1, last - from + 1, GBASLIK.length).getValues().map(function (r) {
+    return { at: r[0] instanceof Date ? r[0].toISOString() : String(r[0]), who: String(r[1]), d: String(r[2]), st: String(r[3]), id: String(r[4]), can: !!r[5] && !r[3] };
+  }).reverse();
+}
+
+function geriAl_(S, id, user) {
+  var sh = ss_().getSheetByName(GECMIS);
+  if (!sh || sh.getLastRow() < 2) return 'not_found';
+  var ids = sh.getRange(2, 5, sh.getLastRow() - 1, 1).getValues();
+  for (var k = ids.length - 1; k >= 0; k--) {
+    if (String(ids[k][0]) !== String(id)) continue;
+    var row = k + 2, r = sh.getRange(row, 1, 1, GBASLIK.length).getValues()[0];
+    if (r[3]) return 'already';
+    if (!r[5]) return 'not_revertible';
+    var inv = JSON.parse(r[5]);
+    inv.forEach(function (op) { if (op.t === 'mdel') etkinlikSil_(S, op.m); applyOp(S, op); });
+    if (S.meetings.some(function (m) { return m.dirty; })) { try { calPush_(S); } catch (err) {} }
+    var zaman = Utilities.formatDate(new Date(), SAAT_DILIMI, 'dd.MM.yyyy HH:mm');
+    sh.getRange(row, 4).setValue('Geri alındı · ' + user + ' · ' + zaman);
+    log_(user, 'Geri alındı: ' + r[2], null);
+    return true;
+  }
+  return 'not_found';
+}
+
+/* ---------------- Toplantılar ---------------- */
+
+function saatStr_(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, SAAT_DILIMI, 'HH:mm');
+  var m = String(v || '').trim().match(/^(\d{1,2})[:.](\d{2})/);
+  return m ? ('0' + m[1]).slice(-2) + ':' + m[2] : '';
+}
+
+function toplantiOku_() {
+  var sh = ss_().getSheetByName(TOPLANTI);
+  if (!sh || sh.getLastRow() < 2) return [];
+  var vals = sh.getRange(2, 1, sh.getLastRow() - 1, TBASLIK.length).getValues(), out = [], yaz = false;
+  vals.forEach(function (r, k) {
+    if (!String(r[3] || '').trim() && !r[0]) return;
+    var id = String(r[9] || '').trim();
+    if (!id) { id = yeniId_(); sh.getRange(k + 2, 10).setValue(id); sh.getRange(k + 2, 13).setValue(true); yaz = true; }
+    out.push({ id: id, date: tarihStr_(r[0]), start: saatStr_(r[1]), end: saatStr_(r[2]), title: String(r[3] || ''), place: String(r[4] || ''),
+      who: String(r[5] || ''), phase: String(r[11] || ''), note: String(r[7] || ''), cal: String(r[8] || ''), ev: String(r[10] || ''),
+      dirty: r[12] === true || String(r[12]).toUpperCase() === 'TRUE', synced: String(r[13] || '') });
+  });
+  if (yaz) revArtir_();
+  return out;
+}
+
+function toplantiYaz_(S) {
+  var ss = ss_(), sh = ss.getSheetByName(TOPLANTI) || ss.insertSheet(TOPLANTI);
+  if (sh.getLastRow() === 0) sh.getRange(1, 1, 1, TBASLIK.length).setValues([TBASLIK]);
+  var adlar = {}; S.phases.forEach(function (p) { adlar[p.id] = p.name; });
+  var list = (S.meetings || []).slice().sort(function (a, b) { return (a.date + a.start).localeCompare(b.date + b.start); });
+  var eski = Math.max(sh.getLastRow() - 1, 0);
+  if (eski > 0) sh.getRange(2, 1, eski, TBASLIK.length).clearContent();
+  if (!list.length) return;
+  sh.getRange(2, 2, list.length, 2).setNumberFormat('@');
+  sh.getRange(2, 1, list.length, TBASLIK.length).setValues(list.map(function (m) {
+    return [tarihDeger_(m.date), m.start || '', m.end || '', m.title || '', m.place || '', m.who || '', adlar[m.phase] || '', m.note || '',
+      m.cal || '', m.id, m.ev || '', m.phase || '', !!m.dirty, m.synced || ''];
+  }));
+}
+
+function takvim_() {
+  return TAKVIM_ID ? CalendarApp.getCalendarById(TAKVIM_ID) : CalendarApp.getDefaultCalendar();
+}
+
+function zaman_(m) {
+  var bas = Utilities.parseDate(m.date + ' ' + (m.start || '09:00'), SAAT_DILIMI, 'yyyy-MM-dd HH:mm');
+  var bit = m.end ? Utilities.parseDate(m.date + ' ' + m.end, SAAT_DILIMI, 'yyyy-MM-dd HH:mm') : null;
+  if (!bit || bit <= bas) bit = new Date(bas.getTime() + 60 * 60 * 1000);
+  return [bas, bit];
+}
+
+function aciklama_(S, m) {
+  var p = S.phases.find(function (x) { return x.id === m.phase; });
+  return 'Origin Kuruluş Takibi' + (p ? '\nAşama: ' + p.name : '') + (m.note ? '\n\n' + m.note : '');
+}
+
+function hatirlatici_(ev) {
+  ev.removeAllReminders();
+  ev.addPopupReminder(60);
+  ev.addPopupReminder(1440);
+}
+
+function etkinlik_(cal, id) {
+  if (!id) return null;
+  try { return cal.getEventById(id); } catch (err) { return null; }
+}
+
+function calPush_(S) {
+  var cal = takvim_(), n = 0;
+  (S.meetings || []).forEach(function (m) {
+    if (!m.dirty && m.ev) return;
+    if (!m.date || !m.title) { m.cal = 'Tarih ve başlık gerekli'; return; }
+    try {
+      var t = zaman_(m), guests = String(m.who || '').split(/[,;\s]+/).filter(function (x) { return /@/.test(x); });
+      var ev = etkinlik_(cal, m.ev);
+      if (ev) {
+        ev.setTitle(ETKINLIK_ONEKI + m.title); ev.setTime(t[0], t[1]); ev.setLocation(m.place || ''); ev.setDescription(aciklama_(S, m));
+        var var_ = ev.getGuestList().map(function (g) { return g.getEmail().toLowerCase(); });
+        guests.forEach(function (g) { if (var_.indexOf(g.toLowerCase()) < 0) ev.addGuest(g); });
+      } else {
+        ev = cal.createEvent(ETKINLIK_ONEKI + m.title, t[0], t[1], { location: m.place || '', description: aciklama_(S, m), guests: guests.join(','), sendInvites: guests.length > 0 });
+        m.ev = ev.getId();
+      }
+      hatirlatici_(ev);
+      m.dirty = false; m.cal = 'Takvimde ✓'; m.synced = new Date().toISOString(); n++;
+    } catch (err) { m.cal = 'Hata: ' + String(err).slice(0, 80); }
+  });
+  return n;
+}
+
+function calPull_(S) {
+  var cal = takvim_(), r = { pulled: 0, removed: 0 };
+  S.meetings = (S.meetings || []).filter(function (m) {
+    if (!m.ev || m.dirty) return true;
+    var ev = etkinlik_(cal, m.ev);
+    if (!ev) { r.removed++; log_('Google Takvim', 'Toplantı takvimden silindiği için kaldırıldı: ' + m.title + ' (' + m.date + ')', [{ t: 'madd', mt: Object.assign({}, m, { ev: '' }) }]); return false; }
+    var son = ev.getLastUpdated(), es = m.synced ? new Date(m.synced) : new Date(0);
+    if (son.getTime() > es.getTime() + 5000) {
+      var bas = ev.getStartTime(), bit = ev.getEndTime();
+      m.date = Utilities.formatDate(bas, SAAT_DILIMI, 'yyyy-MM-dd');
+      m.start = Utilities.formatDate(bas, SAAT_DILIMI, 'HH:mm');
+      m.end = Utilities.formatDate(bit, SAAT_DILIMI, 'HH:mm');
+      m.title = ev.getTitle().replace(ETKINLIK_ONEKI, '');
+      m.place = ev.getLocation() || '';
+      m.synced = new Date().toISOString(); m.cal = 'Takvimde ✓';
+      hatirlatici_(ev);
+      r.pulled++;
+    }
+    return true;
+  });
+  return r;
+}
+
+function takvimEsitle_(S, user) {
+  var r = calPull_(S);
+  S.meetings.forEach(function (m) { if (!m.ev) m.dirty = true; });
+  r.pushed = calPush_(S);
+  if (user && (r.pulled || r.removed || r.pushed)) log_(user, 'Takvim eşitlendi: ' + r.pushed + ' gönderildi, ' + r.pulled + ' takvimden güncellendi, ' + r.removed + ' kaldırıldı', null);
+  return r;
+}
+
+function etkinlikSil_(S, id) {
+  var m = (S.meetings || []).find(function (z) { return z.id === id; });
+  if (!m || !m.ev) return;
+  try { var ev = etkinlik_(takvim_(), m.ev); if (ev) ev.deleteEvent(); } catch (err) {}
+}
+
+/* Saatlik tetikleyici ve menü: Takvimdeki değişiklikleri çeker, eksikleri gönderir. */
+function takvimEsitle() {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(28000);
+  try {
+    var S = oku_();
+    var r = takvimEsitle_(S, 'Otomatik eşitleme');
+    yaz_(S); revArtir_();
+    return r;
+  } finally { lock.releaseLock(); }
 }

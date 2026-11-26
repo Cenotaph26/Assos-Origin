@@ -81,6 +81,17 @@ function buildWorkbook(ExcelJS, S, todayStr){
     row.height=20; });
   const e=3+ranges.length;
   if(ranges.length) sm.addConditionalFormatting({ref:`G4:G${e}`,rules:[{type:'dataBar',minLength:0,maxLength:100,cfvo:[{type:'num',value:0},{type:'num',value:1}],color:{argb:C.acc},gradient:false}]});
+  // toplantılar
+  const ms=(S.meetings||[]).slice().sort((a,b)=>(a.date+a.start).localeCompare(b.date+b.start));
+  if(ms.length){
+    const mt=wb.addWorksheet('Toplantılar',{views:[{showGridLines:false}],pageSetup:{paperSize:9,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0}});
+    mt.columns=[{width:13},{width:9},{width:9},{width:40},{width:24},{width:36},{width:30},{width:44}];
+    const MH=['Tarih','Başlangıç','Bitiş','Başlık','Yer','Katılımcılar','Aşama','Not'];
+    MH.forEach((h,c)=>{ const cell=mt.getRow(1).getCell(c+1); cell.value=h; cell.font={name:F,size:9,bold:true,color:{argb:C.white}}; cell.fill=solid(C.ink); });
+    const adlar={}; S.phases.forEach(p=>adlar[p.id]=p.name);
+    ms.forEach((m,i)=>{ const row=mt.getRow(i+2); row.values=[dt(m.date),m.start||'',m.end||'',m.title||'',m.place||'',m.who||'',adlar[m.phase]||'',m.note||''];
+      row.getCell(1).numFmt='dd.mm.yyyy'; row.eachCell({includeEmpty:true},(cell,c)=>{ if(c>8) return; cell.font={name:F,size:10,bold:c===4}; cell.alignment={vertical:'top',wrapText:c===4||c===8}; cell.border={bottom:{style:'thin',color:{argb:C.line}}}; }); });
+  }
   return wb;
 }
 window.buildWorkbook = buildWorkbook;

@@ -1,5 +1,5 @@
 /* Çevrimdışı açılış için uygulama dosyalarını önbelleğe alır. Veriler bu önbelleğe girmez. */
-const CACHE = 'origin-v2';
+const CACHE = 'origin-v3';
 const SHELL = ['./', 'index.html', 'config.js', 'js/ops.js', 'js/export.js', 'js/app.js', 'manifest.webmanifest', 'icons/icon-192.png'];
 
 self.addEventListener('install', e => {

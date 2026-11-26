@@ -1,14 +1,17 @@
 /* Origin takip — veri işlemleri.
    Aynı fonksiyon apps-script/Code.gs içinde de var: biri değişirse diğerini de güncelleyin. */
 (function (root) {
+  var STEP_F = ['t', 'who', 's', 'e', 'plan', 'act', 'st', 'note'];
+  var MEET_F = ['title', 'date', 'start', 'end', 'place', 'who', 'phase', 'note'];
   function findPhase(S, id) { return S.phases.find(function (p) { return p.id === id; }); }
   function applyOp(S, op) {
     var p = op.p ? findPhase(S, op.p) : null, i;
+    if (!S.meetings) S.meetings = [];
     switch (op.t) {
       case 'set':
         if (!p) return S;
         var x = p.steps.find(function (s) { return s.id === op.s; });
-        if (x && ['t', 'who', 's', 'e', 'plan', 'act', 'st', 'note'].indexOf(op.f) >= 0) x[op.f] = String(op.v == null ? '' : op.v);
+        if (x && STEP_F.indexOf(op.f) >= 0) x[op.f] = String(op.v == null ? '' : op.v);
         return S;
       case 'pname':
         if (p) p.name = String(op.v || 'Adsız aşama');
@@ -38,6 +41,18 @@
         return S;
       case 'seed':
         if (!S.phases.length && op.phases && op.phases.length) S.phases = op.phases;
+        return S;
+      case 'madd':
+        if (S.meetings.some(function (m) { return m.id === op.mt.id; })) return S;
+        var nm = JSON.parse(JSON.stringify(op.mt)); nm.dirty = true;
+        S.meetings.push(nm);
+        return S;
+      case 'mset':
+        var m = S.meetings.find(function (z) { return z.id === op.m; });
+        if (m && MEET_F.indexOf(op.f) >= 0) { m[op.f] = String(op.v == null ? '' : op.v); m.dirty = true; }
+        return S;
+      case 'mdel':
+        S.meetings = S.meetings.filter(function (z) { return z.id !== op.m; });
         return S;
     }
     return S;
