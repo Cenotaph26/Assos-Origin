@@ -4,7 +4,7 @@
  * Bu dosya, takip panelinin (GitHub Pages) verilerini Google E-Tablo'da saklar.
  * - "Takip" sayfası: tüm aşama ve adımlar (asıl veri). Elle de düzenlenebilir; panel değişikliği görür.
  * - "Özet" sayfası: aşama başına ilerleme ve bütçe (otomatik).
- * - "Toplantılar" sayfası: toplantılar; Google Takvim ile eşitlenir (1 gün ve 1 saat önce hatırlatıcı).
+ * - "Toplantılar" sayfası: toplantılar. Her kullanıcı panelden kendi Google Takvim'i ile eşitler.
  * - "Geçmiş" sayfası: kim, ne zaman, neyi değiştirdi; panelden tek tek geri alınabilir.
  * - Her gün Drive'daki "Origin Excel Yedekleri" klasörüne .xlsx yedek alınır.
  *
@@ -21,7 +21,10 @@ var YEDEK_SAYISI = 30;
 var SAAT_DILIMI = 'Europe/Istanbul';
 var TOPLANTI = 'Toplantılar';
 var GECMIS = 'Geçmiş';
-// Boş bırakılırsa web uygulamasını yayınlayan hesabın ana takvimi kullanılır.
+// Toplantılar her kullanıcının KENDİ takvimine panelden (tarayıcıda) eklenir.
+// Sunucunun ayrıca ortak bir takvime yazmasını isterseniz TAKVIM_SUNUCU = true yapın.
+var TAKVIM_SUNUCU = false;
+// TAKVIM_SUNUCU açıkken kullanılacak takvim; boşsa yayınlayan hesabın ana takvimi.
 var TAKVIM_ID = '';
 var ETKINLIK_ONEKI = 'Origin · ';
 var TBASLIK = ['Tarih', 'Başlangıç', 'Bitiş', 'Başlık', 'Yer', 'Katılımcılar (e-posta)', 'Aşama', 'Not', 'Takvim', 'toplanti_id', 'etkinlik_id', 'asama_id', 'degisti', 'esitlendi'];
@@ -59,7 +62,7 @@ function doPost(e) {
       var msg = geriAl_(S, body.id, user);
       if (msg !== true) return json_({ ok: false, error: msg });
     } else if (body.action === 'calsync') {
-      report = takvimEsitle_(S, user);
+      report = TAKVIM_SUNUCU ? takvimEsitle_(S, user) : { disabled: true };
     } else {
       var changes = body.changes || [{ ops: body.ops || [] }];
       changes.forEach(function (c) {
@@ -69,7 +72,7 @@ function doPost(e) {
         });
         if (c.d) log_(user, c.d, c.inv || null);
       });
-      if (S.meetings.some(function (m) { return m.dirty; })) {
+      if (TAKVIM_SUNUCU && S.meetings.some(function (m) { return m.dirty; })) {
         try { calPush_(S); } catch (err) { report = { error: String(err) }; }
       }
     }
@@ -315,8 +318,7 @@ function kurulum() {
 
   ScriptApp.getProjectTriggers().forEach(function (t) { if (['gunlukYedek', 'takvimEsitle'].indexOf(t.getHandlerFunction()) >= 0) ScriptApp.deleteTrigger(t); });
   ScriptApp.newTrigger('gunlukYedek').timeBased().everyDays(1).atHour(23).inTimezone(SAAT_DILIMI).create();
-  ScriptApp.newTrigger('takvimEsitle').timeBased().everyHours(1).create();
-  takvim_(); // Takvim iznini kurulumda iste
+  if (TAKVIM_SUNUCU) { ScriptApp.newTrigger('takvimEsitle').timeBased().everyHours(1).create(); takvim_(); }
   Logger.log('Kurulum tamam. Şimdi Dağıt > Yeni dağıtım > Web uygulaması ile yayınlayın.');
 }
 
@@ -341,7 +343,6 @@ function gunlukYedek() {
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('Origin')
     .addItem('Şimdi Excel yedeği al', 'yedekMenu_')
-    .addItem('Toplantıları Takvimle eşitle', 'takvimEsitle')
     .addItem('Kurulumu yenile', 'kurulum')
     .addToUi();
 }
@@ -380,7 +381,7 @@ function geriAl_(S, id, user) {
     if (!r[5]) return 'not_revertible';
     var inv = JSON.parse(r[5]);
     inv.forEach(function (op) { if (op.t === 'mdel') etkinlikSil_(S, op.m); applyOp(S, op); });
-    if (S.meetings.some(function (m) { return m.dirty; })) { try { calPush_(S); } catch (err) {} }
+    if (TAKVIM_SUNUCU && S.meetings.some(function (m) { return m.dirty; })) { try { calPush_(S); } catch (err) {} }
     var zaman = Utilities.formatDate(new Date(), SAAT_DILIMI, 'dd.MM.yyyy HH:mm');
     sh.getRange(row, 4).setValue('Geri alındı · ' + user + ' · ' + zaman);
     log_(user, 'Geri alındı: ' + r[2], null);
@@ -424,7 +425,7 @@ function toplantiYaz_(S) {
   sh.getRange(2, 2, list.length, 2).setNumberFormat('@');
   sh.getRange(2, 1, list.length, TBASLIK.length).setValues(list.map(function (m) {
     return [tarihDeger_(m.date), m.start || '', m.end || '', m.title || '', m.place || '', m.who || '', adlar[m.phase] || '', m.note || '',
-      m.cal || '', m.id, m.ev || '', m.phase || '', !!m.dirty, m.synced || ''];
+      m.cal || '', m.id, m.ev || '', m.phase || '', TAKVIM_SUNUCU ? !!m.dirty : false, m.synced || ''];
   }));
 }
 
@@ -510,6 +511,7 @@ function takvimEsitle_(S, user) {
 }
 
 function etkinlikSil_(S, id) {
+  if (!TAKVIM_SUNUCU) return;
   var m = (S.meetings || []).find(function (z) { return z.id === id; });
   if (!m || !m.ev) return;
   try { var ev = etkinlik_(takvim_(), m.ev); if (ev) ev.deleteEvent(); } catch (err) {}
@@ -517,6 +519,7 @@ function etkinlikSil_(S, id) {
 
 /* Saatlik tetikleyici ve menü: Takvimdeki değişiklikleri çeker, eksikleri gönderir. */
 function takvimEsitle() {
+  if (!TAKVIM_SUNUCU) return null;
   var lock = LockService.getScriptLock();
   lock.waitLock(28000);
   try {

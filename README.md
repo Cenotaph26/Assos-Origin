@@ -10,7 +10,7 @@ Assos Extra · Origin üretim merkezinin inşaattan açılışa kadar tüm adım
   - Paneldeki "Excel'e aktar" düğmesi biçimli bir `.xlsx` indirir.
   - E-tablo her gece 23:00'te Drive'daki "Origin Excel Yedekleri" klasörüne `.xlsx` olarak yedeklenir. Son 30 yedek saklanır.
 - **Değişiklik geçmişi:** Kim, ne zaman, neyi değiştirdi "Geçmiş" sayfasına yazılır. Paneldeki "Geçmiş" düğmesinden her değişiklik tek tek geri alınabilir.
-- **Toplantılar:** Panelden eklenen toplantılar Google Takvim'e 1 gün ve 1 saat önce hatırlatıcıyla eklenir. Katılımcılara davet gider. "Takvimimle eşitle" düğmesi ve saatlik otomatik eşitleme, takvimde yapılan saat değişikliklerini panele de getirir.
+- **Toplantılar:** Panelden eklenen toplantılar, "Takvimimle eşitle" düğmesine basan kişinin **kendi** Google Takvim'ine 1 gün ve 1 saat önce hatırlatıcıyla eklenir. Kişi takviminde saati değiştirirse panel de güncellenir. Panelden silinen toplantı takvimden de kalkar.
 - **E-Tablo'da elle düzenleme:** E-Tablo'daki "Takip" sayfasında elle yapılan düzenlemeler de panele yansır.
 
 ## Kurulum (bir kez, yaklaşık 10 dakika)
@@ -60,10 +60,31 @@ Panel kendiliğinden güncellenir. E-tablodaki kodu ise bir kez güncellemeniz g
 1. E-tabloda **Uzantılar → Apps Script**'i açın.
 2. `Code.gs` içeriğini silin ve bu depodaki [`apps-script/Code.gs`](apps-script/Code.gs) dosyasının tamamını yapıştırın.
 3. `EKIP_SIFRESI` satırına mevcut şifrenizi yeniden yazın ve **Kaydet**'e basın.
-4. Fonksiyon listesinden `kurulum`'u seçip **Çalıştır**'a basın. Google bu sefer **Takvim** izni de isteyecek; izin verin. Böylece "Toplantılar" ve "Geçmiş" sayfaları ile saatlik takvim eşitlemesi kurulur.
+4. Fonksiyon listesinden `kurulum`'u seçip **Çalıştır**'a basın. Böylece "Toplantılar" ve "Geçmiş" sayfaları kurulur.
 5. **Dağıt → Dağıtımları yönet** yolunu izleyin. Kalem simgesine basın, **Sürüm: Yeni sürüm** seçip **Dağıt**'a basın. Adres aynı kalır.
 
-Toplantılar, web uygulamasını yayınlayan hesabın ana takvimine eklenir. Başka bir takvim kullanmak isterseniz `Code.gs` içindeki `TAKVIM_ID` satırına o takvimin kimliğini yazın. Kimliği Google Takvim'de takvim ayarları → "Takvimi entegre et" bölümünde bulabilirsiniz.
+## Kişisel takvim kurulumu (bir kez, yönetici yapar, yaklaşık 10 dakika)
+
+Panelin her kullanıcının kendi takvimine yazabilmesi için Google'dan bir "istemci kimliği" alınır. Bu işlem ücretsizdir.
+
+1. [console.cloud.google.com](https://console.cloud.google.com) adresine girin. Üstten **Yeni proje** açın, adını **Origin Takip** yapın.
+2. **API'ler ve Hizmetler → Kitaplık** bölümünde **Google Calendar API**'yi bulup **Etkinleştir**'e basın.
+3. **Google Auth Platform** (ya da **OAuth izin ekranı**) bölümünde:
+   - **Uygulama adı:** Origin Takip. Destek e-postası olarak kendi adresinizi girin.
+   - **Kitle (Audience):**
+     - Şirketinizin Google Workspace hesabı varsa **Dahili (Internal)** seçin. Bu durumda tüm şirket hesapları kullanabilir.
+     - Yoksa **Harici (External)** seçin ve **Test kullanıcıları** bölümüne ekipteki herkesin Gmail adresini ekleyin. En fazla 100 kişi eklenebilir.
+   - **Veri erişimi (Scopes):** `.../auth/calendar.events` iznini ekleyin.
+4. **İstemciler (Clients) → İstemci oluştur** yolunu izleyin. Tür olarak **Web uygulaması**'nı seçin.
+   - **Yetkili JavaScript kaynakları** alanına `https://cenotaph26.github.io` yazın.
+   - **Oluştur**'a basın.
+5. Size verilen `….apps.googleusercontent.com` ile biten **İstemci kimliği**'ni `config.js` dosyasında `googleClientId` alanına yapıştırın.
+
+**İlk kullanımda:** Her kişi "Takvimimle eşitle"ye ilk bastığında Google hesabını seçer ve takvim izni verir. Harici modda "Google bu uygulamayı doğrulamadı" uyarısı çıkar; **Devam**'a basmak yeterli, çünkü uygulama sizin.
+
+**Bundan sonra:** O oturumda toplantı eklendiğinde ya da değiştiğinde takvim kendiliğinden güncellenir. Sayfa yeniden açıldığında düğmeye bir kez basmak yeterlidir.
+
+İstemci kimliği girilmemişse her toplantıda "+ Takvimime ekle" bağlantısı çıkar. Bu bağlantı toplantıyı tek tıkla kişinin takvimine ekler, ama eşitleme ve özel hatırlatıcı içermez.
 
 ## Günlük kullanım
 
@@ -76,7 +97,7 @@ Toplantılar, web uygulamasını yayınlayan hesabın ana takvimine eklenir. Ba�
 | Son değişikliğinizi geri almak | Araç çubuğunda "Geri al" |
 | Herhangi bir eski değişikliği geri almak | "Geçmiş" → ilgili satırda "Geri al" (iki kez dokunun) |
 | Toplantı eklemek / düzenlemek | Toplantılar bölümü → "+ Toplantı ekle" ya da ✎ |
-| Takvimle eşitlemek | "Takvimimle eşitle" (ayrıca her saat kendiliğinden) |
+| Kendi takviminizle eşitlemek | "Takvimimle eşitle" (ilk seferde Google izni istenir) |
 | Google E-Tabloyu açmak | "E-Tabloya aktar": bekleyen değişiklikleri gönderir ve e-tabloyu açar |
 | Biçimli Excel almak | "Excel indir" |
 | Günlük Excel yedekleri | Google Drive → Origin Excel Yedekleri |

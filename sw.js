@@ -1,6 +1,6 @@
 /* Çevrimdışı açılış için uygulama dosyalarını önbelleğe alır. Veriler bu önbelleğe girmez. */
-const CACHE = 'origin-v3';
-const SHELL = ['./', 'index.html', 'config.js', 'js/ops.js', 'js/export.js', 'js/app.js', 'manifest.webmanifest', 'icons/icon-192.png'];
+const CACHE = 'origin-v4';
+const SHELL = ['./', 'index.html', 'config.js', 'js/ops.js', 'js/export.js', 'js/gcal.js', 'js/app.js', 'manifest.webmanifest', 'icons/icon-192.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -11,7 +11,7 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const u = new URL(e.request.url);
   if (e.request.method !== 'GET') return;
-  if (u.hostname.endsWith('google.com') || u.hostname.endsWith('googleusercontent.com')) return; // veri isteği: önbelleğe alma
+  if (u.hostname.endsWith('google.com') || u.hostname.endsWith('googleusercontent.com') || u.hostname.endsWith('googleapis.com')) return; // veri isteği: önbelleğe alma
   // Ağ önce, olmazsa önbellek: güncellemeler hemen görünür, internetsiz de açılır.
   e.respondWith(
     fetch(e.request).then(r => {

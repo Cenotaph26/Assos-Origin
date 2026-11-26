@@ -381,9 +381,9 @@ function meetCard(m, past){
   const guests = String(m.who||'').split(/[,;\s]+/).filter(x=>/@/.test(x)).length;
   const soon = !past && dt && (dt - new Date(D0.getFullYear(), D0.getMonth(), D0.getDate())) <= 86400000;
   let chip;
-  if (!connected()) chip = '<span class="chip">Bu cihazda</span>';
-  else if (m.dirty || !m.ev) chip = /^Hata/.test(m.cal||'') ? `<span class="chip err" title="${esc(m.cal)}">Takvim hatası</span>` : '<span class="chip">Takvime gönderiliyor</span>';
-  else chip = '<span class="chip ok" title="1 gün ve 1 saat önce hatırlatıcı kurulu">Takvimde ✓ · hatırlatıcı kurulu</span>';
+  const C = window.OriginCal;
+  if (!C.configured()) chip = past ? '' : `<a class="chip" href="${esc(C.templateLink(m, ph && ph.name))}" target="_blank" rel="noopener">+ Takvimime ekle</a>`;
+  else { const st = C.status(m); chip = st === 'ok' ? '<span class="chip ok" title="1 gün ve 1 saat önce hatırlatıcı kurulu">Takviminizde ✓</span>' : st === 'stale' ? '<span class="chip">Takviminizde eski · eşitleyin</span>' : '<span class="chip">Takviminizde yok</span>'; }
   return `<article class="mi${soon?' soon':''}" data-m="${esc(m.id)}">
     <div class="mday"><b>${dt?d:'?'}</b><span>${dt?AY[mo-1]+' · '+GUN[dt.getDay()]:''}</span></div>
     <div><h3 class="mt">${esc(m.title||'Adsız toplantı')}</h3>
@@ -425,11 +425,11 @@ $('#mF').addEventListener('submit', e=>{
   const when = `${v.date.split('-').reverse().join('.')} ${v.start}`;
   if (!editM) {
     const mt = Object.assign({id: uid(), ev:'', cal:''}, v);
-    act({t:'madd', mt}, {t:'mdel', m: mt.id}, `Toplantı eklendi: "${v.title}" (${when})`);
+    act({t:'madd', mt}, {t:'mdel', m: mt.id}, `Toplantı eklendi: "${v.title}" (${when})`); calAuto();
   } else {
     const ops = [], inv = [];
     Object.keys(v).forEach(f=>{ if (String(editM[f]??'') !== v[f]) { ops.push({t:'mset', m: editM.id, f, v: v[f]}); inv.push({t:'mset', m: editM.id, f, v: editM[f]??''}); } });
-    if (ops.length) act(ops, inv, `Toplantı güncellendi: "${v.title}" (${when})`);
+    if (ops.length) { act(ops, inv, `Toplantı güncellendi: "${v.title}" (${when})`); calAuto(); }
   }
   closeM();
 });
@@ -439,23 +439,41 @@ document.addEventListener('click', e=>{
   if (b.dataset.mact === 'edit') return openMeet(m);
   if (armed !== m.id) { armed = m.id; render(); return; }
   armed = null;
-  act({t:'mdel', m: m.id}, {t:'madd', mt: Object.assign(clone(m), {ev:''})}, `Toplantı silindi: "${m.title}" (${(m.date||'').split('-').reverse().join('.')} ${m.start||''})`);
+  act({t:'mdel', m: m.id}, {t:'madd', mt: Object.assign(clone(m), {ev:''})}, `Toplantı silindi: "${m.title}" (${(m.date||'').split('-').reverse().join('.')} ${m.start||''})`); calAuto();
 });
-$('#calSync').addEventListener('click', async ()=>{
-  if (!connected()) { openDlg('Takvimle eşitlemek için önce bağlanın.'); return; }
+let calBusy = false, calT = null;
+function calLabel(){
+  const C = window.OriginCal, a = C.account();
+  $('#calAcc').textContent = C.configured() ? (a ? 'Takvim: ' + a : 'Google hesabınızla bağlanın') : '';
+  $('#calOut').hidden = !(C.configured() && a);
+}
+async function calSync(interactive){
+  const C = window.OriginCal;
+  if (!C.configured()) { status('err', 'Kişisel takvim eşitlemesi için yönetici kurulumu gerekli (README)'); setTimeout(idleStatus, 5000); return; }
+  if (calBusy) return; calBusy = true;
   const b = $('#calSync'); b.disabled = true; b.textContent = 'Eşitleniyor…';
   try {
-    if (pending.length || inflight) { await sync(); let n = 0; while ((inflight || pending.length) && n++ < 40) await new Promise(r=>setTimeout(r,250)); }
-    const r = await post([], {action:'calsync'}); noteSheet(r);
-    if (!r.ok) throw new Error(r.error);
-    adopt(r.state, r.rev);
-    const t = r.report;
-    if (!t) status('err', 'Sunucu kodu güncel değil: README > Güncelleme adımına bakın');
-    else if (t.error) status('err', 'Takvim hatası: ' + t.error);
-    else { lastOk = hhmm(); status('ok', `Takvim eşitlendi · ${t.pushed} gönderildi, ${t.pulled} güncellendi${t.removed?', '+t.removed+' kaldırıldı':''}`); }
-  } catch(err) { status('err', 'Takvimle eşitlenemedi, bağlantıyı kontrol edin'); }
-  b.disabled = false; b.textContent = 'Takvimimle eşitle';
-});
+    const rep = await C.sync(S.meetings || [], id => (S.phases.find(p=>p.id===id)||{}).name || '', (id, f) => {
+      const m = (S.meetings||[]).find(z=>z.id===id); if (!m) return;
+      const ops = Object.keys(f).map(k=>({t:'mset', m:id, f:k, v:f[k]})), inv = Object.keys(f).map(k=>({t:'mset', m:id, f:k, v:m[k]??''}));
+      act(ops, inv, `Takvimden güncellendi: "${m.title}" → ${(f.date||m.date).split('-').reverse().join('.')} ${f.start||m.start}`);
+    }, interactive);
+    const parts = [];
+    if (rep.created) parts.push(rep.created + ' eklendi'); if (rep.updated) parts.push(rep.updated + ' güncellendi');
+    if (rep.pulled) parts.push(rep.pulled + ' takvimden alındı'); if (rep.removed) parts.push(rep.removed + ' silindi');
+    status('ok', 'Takviminiz eşitlendi' + (parts.length ? ' · ' + parts.join(', ') : ' · değişiklik yok'));
+  } catch (err) {
+    const c = err.code || '';
+    status('err', /popup|access_denied|closed/.test(c) ? 'Google izni verilmedi' : c === 'api' && err.status === 403 ? 'Takvim API izni yok: yönetici kurulumunu kontrol edin' : 'Takvimle eşitlenemedi: ' + err.message);
+  }
+  calBusy = false; b.disabled = false; b.textContent = 'Takvimimle eşitle';
+  calLabel(); renderMeet();
+}
+$('#calSync').addEventListener('click', ()=>calSync(true));
+$('#calOut').addEventListener('click', ()=>{ window.OriginCal.signOut(); calLabel(); renderMeet(); status('off', 'Takvim bağlantısı kaldırıldı'); setTimeout(idleStatus, 3000); });
+/* Toplantı değişince, bu oturumda takvim izni verilmişse kendiliğinden eşitle */
+function calAuto(){ if (window.OriginCal.ready()) { clearTimeout(calT); calT = setTimeout(()=>calSync(false), 1200); } }
+calLabel();
 
 /* ---------- değişiklik geçmişi ---------- */
 const hdlg = $('#hdlg');
