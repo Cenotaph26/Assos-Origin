@@ -28,6 +28,9 @@ var TAKVIM_SUNUCU = false;
 var TAKVIM_ID = '';
 var ETKINLIK_ONEKI = 'Origin · ';
 var TBASLIK = ['Tarih', 'Başlangıç', 'Bitiş', 'Başlık', 'Yer', 'Katılımcılar (e-posta)', 'Aşama', 'Not', 'Takvim', 'toplanti_id', 'etkinlik_id', 'asama_id', 'degisti', 'esitlendi'];
+// Görünüm: paneldeki renk ve yazı dili
+var YAZI = 'Inter';
+var R_MUREKKEP = '#111111', R_TURUNCU = '#ff5a36', R_TURUNCU_ACIK = '#ffe9e3', R_TURUNCU_KOYU = '#c2361a', R_GRI = '#767676', R_ACIK = '#f2f2f2', R_CIZGI = '#e6e6e6', R_BANT = '#fafafa';
 var GBASLIK = ['Zaman', 'Kişi', 'Değişiklik', 'Durum', 'kayit_id', 'ters_islem'];
 
 var BASLIK = ['Aşama no', 'Aşama', 'Durum', 'Adım', 'Sorumlu', 'Başlangıç', 'Bitiş', 'Plan bütçe', 'Harcanan', 'Kalan', 'Not', 'asama_id', 'adim_id'];
@@ -234,31 +237,159 @@ function yaz_(S) {
 
 function ozetYaz_(S) {
   var ss = ss_(), sh = ss.getSheetByName(OZET) || ss.insertSheet(OZET);
-  sh.clear();
-  sh.getRange(1, 1, 1, 9).setValues([['#', 'Aşama', 'Adım', 'Bitti', 'Devam', 'Engel', 'İlerleme', 'Plan bütçe', 'Harcanan']])
-    .setFontWeight('bold').setFontColor('#ffffff').setBackground('#111111');
+  sh.clear(); sh.clearConditionalFormatRules();
+  sh.setHiddenGridlines(true);
+  var B = ['#', 'Aşama', 'İlerleme', '', 'Adım', 'Bitti', 'Devam', 'Engel', 'Plan bütçe', 'Harcanan', 'Kalan'];
+  sh.getRange(1, 1, 1, 11).merge().setValue('Origin Üretim Merkezi · Kuruluş özeti')
+    .setFontFamily(YAZI).setFontSize(20).setFontWeight('bold').setFontColor(R_MUREKKEP).setVerticalAlignment('middle');
+  sh.getRange(2, 1, 1, 11).merge().setValue('Son güncelleme: ' + Utilities.formatDate(new Date(), SAAT_DILIMI, 'dd.MM.yyyy HH:mm') + ' · Bu sayfa otomatik oluşturulur, düzenlemeyin.')
+    .setFontFamily(YAZI).setFontSize(9).setFontColor(R_GRI);
+  sh.setRowHeight(1, 44); sh.setRowHeight(2, 22); sh.setRowHeight(3, 12);
+  baslik_(sh.getRange(4, 1, 1, 11).setValues([B]));
+  sh.getRange(4, 3, 1, 2).merge();
+  var id = 'Takip!L:L';
   var rows = S.phases.map(function (p, i) {
-    var n = i + 2, id = 'Takip!L:L', k = '"' + p.id + '"';
-    return [i + 1, p.name, p.steps.length,
+    var n = i + 5, k = '"' + p.id + '"';
+    return [i + 1, p.name,
+      '=IF(E' + n + '=0,0,(F' + n + '+0.5*G' + n + '+0.25*H' + n + ')/E' + n + ')',
+      '=SPARKLINE(C' + n + ',{"charttype","bar";"max",1;"color1","' + R_TURUNCU + '";"empty","zero"})',
+      p.steps.length,
       '=COUNTIFS(' + id + ',' + k + ',Takip!C:C,"Bitti")',
       '=COUNTIFS(' + id + ',' + k + ',Takip!C:C,"Devam")',
       '=COUNTIFS(' + id + ',' + k + ',Takip!C:C,"Engel var")',
-      '=IF(C' + n + '=0,0,(D' + n + '+0.5*E' + n + '+0.25*F' + n + ')/C' + n + ')',
       '=SUMIFS(Takip!H:H,' + id + ',' + k + ')',
-      '=SUMIFS(Takip!I:I,' + id + ',' + k + ')'];
+      '=SUMIFS(Takip!I:I,' + id + ',' + k + ')',
+      '=I' + n + '-J' + n];
   });
   if (rows.length) {
-    sh.getRange(2, 1, rows.length, 9).setValues(rows);
-    sh.getRange(2, 7, rows.length, 1).setNumberFormat('0%').setFontColor('#c2361a').setFontWeight('bold');
-    sh.getRange(2, 8, rows.length, 2).setNumberFormat('#,##0 "₺"');
-    var t = rows.length + 2;
-    sh.getRange(t, 2, 1, 8).setValues([['Toplam', '=SUM(C2:C' + (t - 1) + ')', '=SUM(D2:D' + (t - 1) + ')', '=SUM(E2:E' + (t - 1) + ')', '=SUM(F2:F' + (t - 1) + ')',
-      '=IF(C' + t + '=0,0,(D' + t + '+0.5*E' + t + '+0.25*F' + t + ')/C' + t + ')', '=SUM(H2:H' + (t - 1) + ')', '=SUM(I2:I' + (t - 1) + ')']]).setFontWeight('bold');
-    sh.getRange(t, 7).setNumberFormat('0%');
-    sh.getRange(t, 8, 1, 2).setNumberFormat('#,##0 "₺"');
+    var n0 = 5, n1 = 4 + rows.length, t = n1 + 1;
+    var d = sh.getRange(n0, 1, rows.length, 11).setValues(rows);
+    govde_(d);
+    sh.setRowHeights(n0, rows.length, 34);
+    sh.getRange(n0, 1, rows.length, 1).setHorizontalAlignment('center').setFontColor(R_GRI);
+    sh.getRange(n0, 2, rows.length, 1).setFontWeight('bold');
+    sh.getRange(n0, 3, rows.length, 1).setNumberFormat('0%').setFontColor(R_TURUNCU).setFontWeight('bold').setFontSize(14).setHorizontalAlignment('right');
+    sh.getRange(n0, 5, rows.length, 4).setHorizontalAlignment('center');
+    sh.getRange(n0, 9, rows.length, 3).setNumberFormat('#,##0 "₺";-#,##0 "₺";"—"').setHorizontalAlignment('right');
+    sh.getRange(t, 2, 1, 10).setValues([['Toplam',
+      '=IF(E' + t + '=0,0,(F' + t + '+0.5*G' + t + '+0.25*H' + t + ')/E' + t + ')',
+      '=SPARKLINE(C' + t + ',{"charttype","bar";"max",1;"color1","' + R_MUREKKEP + '";"empty","zero"})',
+      '=SUM(E' + n0 + ':E' + n1 + ')', '=SUM(F' + n0 + ':F' + n1 + ')', '=SUM(G' + n0 + ':G' + n1 + ')', '=SUM(H' + n0 + ':H' + n1 + ')',
+      '=SUM(I' + n0 + ':I' + n1 + ')', '=SUM(J' + n0 + ':J' + n1 + ')', '=I' + t + '-J' + t]]);
+    var tr = sh.getRange(t, 1, 1, 11);
+    tr.setFontFamily(YAZI).setFontWeight('bold').setFontSize(11).setBackground(R_ACIK).setVerticalAlignment('middle')
+      .setBorder(true, null, null, null, null, null, R_MUREKKEP, SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
+    sh.setRowHeight(t, 38);
+    sh.getRange(t, 3).setNumberFormat('0%').setFontSize(14);
+    sh.getRange(t, 5, 1, 4).setHorizontalAlignment('center');
+    sh.getRange(t, 9, 1, 3).setNumberFormat('#,##0 "₺";-#,##0 "₺";"—"').setHorizontalAlignment('right');
+    sh.setConditionalFormatRules([
+      SpreadsheetApp.newConditionalFormatRule().whenNumberGreaterThan(0).setFontColor(R_TURUNCU_KOYU).setBold(true).setRanges([sh.getRange(n0, 8, rows.length, 1)]).build(),
+      SpreadsheetApp.newConditionalFormatRule().whenNumberEqualTo(1).setFontColor(R_MUREKKEP).setRanges([sh.getRange(n0, 3, rows.length, 1)]).build(),
+      SpreadsheetApp.newConditionalFormatRule().whenNumberLessThan(0).setFontColor(R_TURUNCU_KOYU).setRanges([sh.getRange(n0, 11, rows.length + 1, 1)]).build()
+    ]);
   }
-  sh.setColumnWidth(1, 40); sh.setColumnWidth(2, 320);
-  sh.setFrozenRows(1);
+  [40, 300, 70, 160, 70, 70, 70, 70, 120, 120, 120].forEach(function (px, i) { sh.setColumnWidth(i + 1, px); });
+  sh.setFrozenRows(4);
+}
+
+/* ---------------- Görünüm ---------------- */
+
+function baslik_(r) {
+  return r.setFontFamily(YAZI).setFontSize(10).setFontWeight('bold').setFontColor('#ffffff').setBackground(R_MUREKKEP)
+    .setVerticalAlignment('middle').setWrap(false);
+}
+function govde_(r) {
+  return r.setFontFamily(YAZI).setFontSize(10).setFontColor(R_MUREKKEP).setVerticalAlignment('middle')
+    .setBorder(null, null, true, null, null, true, R_CIZGI, SpreadsheetApp.BorderStyle.SOLID);
+}
+
+/* Tüm sayfaları paneldeki görünüme getirir. kurulum() içinden çağrılır; istenirse tek başına da çalıştırılabilir. */
+function gorunum() {
+  var ss = ss_();
+  var renk = {}; renk[SAYFA] = R_TURUNCU; renk[OZET] = R_MUREKKEP; renk[TOPLANTI] = '#b5b5b5'; renk[GECMIS] = R_CIZGI;
+
+  // Takip
+  var sh = ss.getSheetByName(SAYFA);
+  if (sh) {
+    sh.setHiddenGridlines(true).setTabColor(renk[SAYFA]).setFrozenRows(1).setFrozenColumns(0);
+    baslik_(sh.getRange(1, 1, 1, BASLIK.length).setValues([BASLIK]));
+    sh.setRowHeight(1, 38);
+    var n = Math.max(sh.getMaxRows() - 1, 1);
+    govde_(sh.getRange(2, 1, n, 11));
+    sh.getRange(1, 1, 1, 11).setHorizontalAlignment('left');
+    sh.getRange(1, 3).setHorizontalAlignment('center');
+    sh.getRange(1, 8, 1, 3).setHorizontalAlignment('right');
+    [70, 220, 110, 440, 150, 100, 100, 120, 120, 120, 320, 90, 90].forEach(function (px, i) { sh.setColumnWidth(i + 1, px); });
+    sh.hideColumns(12, 2);
+    sh.getRange(2, 1, n, 1).setHorizontalAlignment('center').setFontColor(R_GRI);
+    sh.getRange(2, 2, n, 1).setFontColor(R_GRI);
+    sh.getRange(2, 3, n, 1).setHorizontalAlignment('center').setFontWeight('bold');
+    sh.getRange(2, 4, n, 1).setWrap(true).setFontWeight('bold');
+    sh.getRange(2, 6, n, 2).setNumberFormat('dd.mm.yyyy').setHorizontalAlignment('center');
+    sh.getRange(2, 8, n, 3).setNumberFormat('#,##0 "₺";-#,##0 "₺";""').setHorizontalAlignment('right');
+    sh.getRange(2, 10, n, 1).setFontColor(R_GRI);
+    sh.getRange(2, 11, n, 1).setWrap(true).setFontColor('#444444');
+    sh.getRange(2, 3, n, 1).setDataValidation(SpreadsheetApp.newDataValidation()
+      .requireValueInList(['Bekliyor', 'Devam', 'Bitti', 'Engel var'], true).setAllowInvalid(false).build());
+    var C = sh.getRange('C2:C'), T = sh.getRange('A2:K');
+    sh.setConditionalFormatRules([
+      SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Bitti').setBackground(R_MUREKKEP).setFontColor('#ffffff').setRanges([C]).build(),
+      SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Devam').setBackground(R_TURUNCU).setFontColor(R_MUREKKEP).setRanges([C]).build(),
+      SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Engel var').setBackground(R_TURUNCU_ACIK).setFontColor(R_TURUNCU_KOYU).setRanges([C]).build(),
+      SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Bekliyor').setBackground(R_ACIK).setFontColor(R_MUREKKEP).setRanges([C]).build(),
+      SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=AND(ISNUMBER($G2),$G2<TODAY(),$C2<>"Bitti")').setFontColor(R_TURUNCU_KOYU).setBold(true).setRanges([sh.getRange('G2:G')]).build(),
+      SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$C2="Bitti"').setStrikethrough(true).setFontColor(R_GRI).setRanges([sh.getRange('D2:D')]).build(),
+      // aşamalar arasında hafif bant: çift numaralı aşamalar açık gri zeminde
+      SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=AND($A2<>"",ISEVEN($A2))').setBackground(R_BANT).setRanges([sh.getRange('A2:B'), sh.getRange('D2:K')]).build()
+    ]);
+  }
+
+  // Toplantılar
+  var ts = ss.getSheetByName(TOPLANTI);
+  if (ts) {
+    ts.setHiddenGridlines(true).setTabColor(renk[TOPLANTI]).setFrozenRows(1);
+    baslik_(ts.getRange(1, 1, 1, TBASLIK.length).setValues([TBASLIK]));
+    ts.setRowHeight(1, 38);
+    var m = Math.max(ts.getMaxRows() - 1, 1);
+    govde_(ts.getRange(2, 1, m, 9));
+    [110, 90, 90, 300, 180, 260, 220, 320, 130].forEach(function (px, i) { ts.setColumnWidth(i + 1, px); });
+    ts.hideColumns(10, 5);
+    ts.getRange(2, 1, m, 1).setNumberFormat('dd.mm.yyyy').setFontWeight('bold');
+    ts.getRange(2, 2, m, 2).setNumberFormat('@').setHorizontalAlignment('center');
+    ts.getRange(2, 4, m, 1).setFontWeight('bold').setWrap(true);
+    ts.getRange(2, 6, m, 3).setWrap(true).setFontColor('#444444');
+    ts.getRange(2, 9, m, 1).setFontColor(R_GRI);
+    ts.setConditionalFormatRules([
+      SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=AND(ISNUMBER($A2),$A2<TODAY())').setFontColor(R_GRI).setRanges([ts.getRange('A2:I')]).build(),
+      SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=AND(ISNUMBER($A2),$A2>=TODAY(),$A2<=TODAY()+1)').setBackground(R_TURUNCU_ACIK).setRanges([ts.getRange('A2:A')]).build()
+    ]);
+  }
+
+  // Geçmiş
+  var gs = ss.getSheetByName(GECMIS);
+  if (gs) {
+    gs.setHiddenGridlines(true).setTabColor(renk[GECMIS]).setFrozenRows(1);
+    baslik_(gs.getRange(1, 1, 1, GBASLIK.length).setValues([GBASLIK]));
+    gs.setRowHeight(1, 38);
+    var g = Math.max(gs.getMaxRows() - 1, 1);
+    govde_(gs.getRange(2, 1, g, 4));
+    [150, 150, 620, 220].forEach(function (px, i) { gs.setColumnWidth(i + 1, px); });
+    gs.hideColumns(5, 2);
+    gs.getRange(2, 1, g, 1).setNumberFormat('dd.mm.yyyy HH:mm').setFontColor(R_GRI);
+    gs.getRange(2, 2, g, 1).setFontWeight('bold');
+    gs.getRange(2, 3, g, 1).setWrap(true);
+    gs.getRange(2, 4, g, 1).setFontColor(R_TURUNCU_KOYU).setFontSize(9);
+    gs.setConditionalFormatRules([
+      SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$D2<>""').setStrikethrough(true).setFontColor(R_GRI).setRanges([gs.getRange('C2:C')]).build()
+    ]);
+  }
+
+  var oz = ss.getSheetByName(OZET);
+  if (oz) { oz.setTabColor(renk[OZET]); ozetYaz_(oku_()); }
+  // sekme sırası: Özet, Takip, Toplantılar, Geçmiş
+  [OZET, SAYFA, TOPLANTI, GECMIS].forEach(function (ad, i) { var s = ss.getSheetByName(ad); if (s) { ss.setActiveSheet(s); ss.moveActiveSheet(i + 1); } });
+  ss.setActiveSheet(ss.getSheetByName(OZET) || ss.getSheets()[0]);
 }
 
 /* Takip sayfası elle düzenlenince panellerin yeni veriyi çekmesi için sürüm artırılır. */
@@ -282,39 +413,12 @@ function kurulum() {
   if (!props_().getProperty('rev')) props_().setProperty('rev', '1');
   ss.setSpreadsheetTimeZone(SAAT_DILIMI);
 
-  var sh = ss.getSheetByName(SAYFA) || ss.insertSheet(SAYFA, 0);
-  sh.getRange(1, 1, 1, BASLIK.length).setValues([BASLIK]).setFontWeight('bold').setFontColor('#767676').setBackground('#f2f2f2');
-  sh.setFrozenRows(1);
-  var w = [70, 220, 100, 420, 150, 100, 100, 110, 110, 110, 300, 90, 90];
-  w.forEach(function (px, i) { sh.setColumnWidth(i + 1, px); });
-  sh.hideColumns(12, 2);
-  sh.getRange('F2:G').setNumberFormat('dd.mm.yyyy');
-  sh.getRange('H2:J').setNumberFormat('#,##0 "₺"');
-  sh.getRange('D2:D').setWrap(true); sh.getRange('K2:K').setWrap(true);
-  sh.getRange('C2:C').setDataValidation(SpreadsheetApp.newDataValidation()
-    .requireValueInList(['Bekliyor', 'Devam', 'Bitti', 'Engel var'], true).setAllowInvalid(false).build());
-
-  var C = sh.getRange('C2:C'), D = sh.getRange('A2:K');
-  var kural = [
-    SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Bitti').setBackground('#111111').setFontColor('#ffffff').setRanges([C]).build(),
-    SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Devam').setBackground('#ff5a36').setFontColor('#111111').setRanges([C]).build(),
-    SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Engel var').setBackground('#ffe9e3').setFontColor('#c2361a').setRanges([C]).build(),
-    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=AND(ISNUMBER($G2),$G2<TODAY(),$C2<>"Bitti")').setFontColor('#c2361a').setBold(true).setRanges([sh.getRange('G2:G')]).build(),
-    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$C2="Bitti"').setStrikethrough(true).setFontColor('#767676').setRanges([sh.getRange('D2:D')]).build()
-  ];
-  sh.setConditionalFormatRules(kural);
+  if (!ss.getSheetByName(SAYFA)) ss.insertSheet(SAYFA, 0);
   if (!ss.getSheetByName(OZET)) ss.insertSheet(OZET, 1);
-  ['Sayfa1', 'Sheet1'].forEach(function (n) { var s = ss.getSheetByName(n); if (s && ss.getSheets().length > 2 && s.getLastRow() === 0) ss.deleteSheet(s); });
-
-  var ts = ss.getSheetByName(TOPLANTI) || ss.insertSheet(TOPLANTI);
-  ts.getRange(1, 1, 1, TBASLIK.length).setValues([TBASLIK]).setFontWeight('bold').setFontColor('#767676').setBackground('#f2f2f2');
-  ts.setFrozenRows(1); ts.hideColumns(10, 5);
-  [100, 80, 80, 280, 160, 240, 200, 280, 120].forEach(function (px, i) { ts.setColumnWidth(i + 1, px); });
-  ts.getRange('A2:A').setNumberFormat('dd.mm.yyyy'); ts.getRange('B2:C').setNumberFormat('@');
-  var gs = ss.getSheetByName(GECMIS) || ss.insertSheet(GECMIS);
-  gs.getRange(1, 1, 1, GBASLIK.length).setValues([GBASLIK]).setFontWeight('bold').setFontColor('#767676').setBackground('#f2f2f2');
-  gs.setFrozenRows(1); gs.hideColumns(5, 2);
-  [150, 140, 560, 160].forEach(function (px, i) { gs.setColumnWidth(i + 1, px); });
+  if (!ss.getSheetByName(TOPLANTI)) ss.insertSheet(TOPLANTI, 2);
+  if (!ss.getSheetByName(GECMIS)) ss.insertSheet(GECMIS, 3);
+  ['Sayfa1', 'Sheet1'].forEach(function (n) { var s = ss.getSheetByName(n); if (s && s.getLastRow() === 0) ss.deleteSheet(s); });
+  gorunum();
 
   ScriptApp.getProjectTriggers().forEach(function (t) { if (['gunlukYedek', 'takvimEsitle'].indexOf(t.getHandlerFunction()) >= 0) ScriptApp.deleteTrigger(t); });
   ScriptApp.newTrigger('gunlukYedek').timeBased().everyDays(1).atHour(23).inTimezone(SAAT_DILIMI).create();

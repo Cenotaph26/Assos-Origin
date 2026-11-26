@@ -102,6 +102,7 @@ Panelin her kullanıcının kendi takvimine yazabilmesi için Google'dan bir "is
 | Biçimli Excel almak | "Excel indir" |
 | Günlük Excel yedekleri | Google Drive → Origin Excel Yedekleri |
 | Anında yedek | E-tablo menüsü → Origin → Şimdi Excel yedeği al |
+| E-tablonun görünümünü yenilemek | Apps Script'te `gorunum` fonksiyonunu çalıştırın |
 | Toplu düzenleme | E-tablodaki Takip sayfası. Gizli `asama_id` / `adim_id` sütunlarına dokunmayın. Yeni satır eklerken Aşama adını mevcut bir aşamayla aynı yazın |
 
 Durum göstergesi:
