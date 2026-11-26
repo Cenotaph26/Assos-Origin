@@ -421,7 +421,8 @@ function gorunum() {
   }
 
   var oz = ss.getSheetByName(OZET);
-  if (oz) { oz.setTabColor(renk[OZET]); ozetYaz_(oku_()); }
+  if (oz) oz.setTabColor(renk[OZET]);
+  yaz_(oku_()); // verileri yeniden yazar: formüller ve özet tazelenir
   // sekme sırası: Özet, Takip, Toplantılar, Geçmiş
   [OZET, SAYFA, TOPLANTI, GECMIS].forEach(function (ad, i) { var s = ss.getSheetByName(ad); if (s) { ss.setActiveSheet(s); ss.moveActiveSheet(i + 1); } });
   ss.setActiveSheet(ss.getSheetByName(OZET) || ss.getSheets()[0]);
